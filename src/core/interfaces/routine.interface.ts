@@ -1,0 +1,7 @@
+export enum RoutineTaskStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  MISSED = 'MISSED',
+  SKIPPED = 'SKIPPED',
+}
