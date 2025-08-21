@@ -65,9 +65,9 @@ export class RefreshTokenUseCase {
     };
 
     return jwt.sign(payload, process.env.JWT_ACCESS_SECRET!, {
-      expiresIn: '15m', // 15 minutos
-      issuer: 'tickguard',
-      audience: 'tickguard-users',
+      expiresIn: '1h', // 1 hora
+      issuer: 'notapp',
+      audience: 'notapp-users',
     });
   }
 

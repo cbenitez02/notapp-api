@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { RoutineTaskStatus } from '../../../core/interfaces/routine.interface';
+import { RoutinePriority, RoutineTaskStatus } from '../../../core/interfaces/routine.interface';
+import { CategoryEntity } from './CategoryEntity';
 import { RoutineEntity } from './RoutineEntity';
 
 @Entity({ name: 'routine_tasks' })
@@ -19,6 +20,9 @@ export class RoutineTaskEntity {
   @Column('char', { length: 36 })
   user_id!: string;
 
+  @Column({ length: 120 })
+  title!: string; // Título/nombre de la tarea específica
+
   @Column({ type: 'date' })
   date_local!: string; // "2025-08-14"
 
@@ -27,6 +31,16 @@ export class RoutineTaskEntity {
 
   @Column({ type: 'smallint', nullable: true })
   duration_min?: number;
+
+  @ManyToOne(() => CategoryEntity, { nullable: true })
+  @JoinColumn({ name: 'category_id' })
+  category?: CategoryEntity;
+
+  @Column('char', { length: 36, nullable: true })
+  category_id?: string; // Categoría específica de la tarea (puede diferir de la rutina)
+
+  @Column({ type: 'enum', enum: RoutinePriority, default: RoutinePriority.MEDIA })
+  priority!: RoutinePriority; // Prioridad específica de la tarea
 
   @Column({ type: 'enum', enum: RoutineTaskStatus, default: RoutineTaskStatus.PENDING })
   status!: RoutineTaskStatus;
@@ -38,7 +52,7 @@ export class RoutineTaskEntity {
   completed_at_local?: Date;
 
   @Column({ length: 500, nullable: true })
-  notes?: string;
+  description?: string;
 
   @CreateDateColumn()
   created_at!: Date;

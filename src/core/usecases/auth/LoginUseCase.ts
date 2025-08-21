@@ -81,9 +81,9 @@ export class LoginUseCase {
     };
 
     return jwt.sign(payload, process.env.JWT_ACCESS_SECRET!, {
-      expiresIn: '15m', // Token corto para seguridad
-      issuer: 'tickguard',
-      audience: 'tickguard-users',
+      expiresIn: '1h', // Token de 1 hora
+      issuer: 'notapp',
+      audience: 'notapp-users',
     });
   }
 

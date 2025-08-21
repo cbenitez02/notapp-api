@@ -30,7 +30,7 @@ AppDataSource.initialize()
     console.error('Error during Data Source initialization:', error);
   });
 
-app.get('/health', (_, res) => res.send('TickGuard backend is running'));
+app.get('/health', (_, res) => res.send('NotApp backend is running'));
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
