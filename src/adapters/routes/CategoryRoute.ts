@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { GetAllCategoriesUseCase } from '../../core/usecases/categories/GetAllCategoriesUseCase';
+import { AuthMiddleware } from '../../middlewares/Auth.middleware';
 import { CategoryController } from '../controllers/CategoryController';
 import { AppDataSource } from '../database/ormconfig';
 import { CategoryEntity } from '../persistence/entities/CategoryEntity';
@@ -17,6 +18,6 @@ const getAllCategoriesUseCase = new GetAllCategoriesUseCase(categoryRepository);
 const categoryController = new CategoryController(getAllCategoriesUseCase);
 
 // Routes
-router.get('/', (req, res) => categoryController.getAll(req, res));
+router.get('/', AuthMiddleware.authenticate, (req, res) => categoryController.getAll(req, res));
 
 export { router };

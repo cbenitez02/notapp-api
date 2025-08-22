@@ -1,5 +1,13 @@
-import { Request, Response } from 'express';
-import { CreateRoutineDto, RoutinePriority, RoutineResponseDto, UpdateRoutineDto } from '../../core/interfaces/routine.interface';
+import { Response } from 'express';
+import { RoutineTask } from '../../core/entities/RoutineTask';
+import { AuthRequest } from '../../core/interfaces/auth.interface';
+import {
+  CreateRoutineDto,
+  CreateRoutineRequestDto,
+  RoutineResponseDto,
+  RoutineTaskResponseDto,
+  UpdateRoutineDto,
+} from '../../core/interfaces/routine.interface';
 import { CreateRoutineUseCase } from '../../core/usecases/routines/CreateRoutineUseCase';
 import { DeleteRoutineUseCase } from '../../core/usecases/routines/DeleteRoutineUseCase';
 import { GetRoutineByIdUseCase } from '../../core/usecases/routines/GetRoutineByIdUseCase';
@@ -15,8 +23,14 @@ export class RoutineController {
     private readonly deleteRoutineUseCase: DeleteRoutineUseCase,
   ) {}
 
-  public async create(req: Request, res: Response): Promise<void> {
+  public async create(req: AuthRequest, res: Response): Promise<void> {
     try {
+      // Obtener userId del token de autenticación
+      if (!req.user) {
+        res.status(401).json({ message: 'Authentication required' });
+        return;
+      }
+
       // Validar request body
       const validationError = this.validateCreateRoutineRequest(req.body);
 
@@ -25,9 +39,9 @@ export class RoutineController {
         return;
       }
 
-      const { userId, title, defaultTimeLocal, repeatDaysJson, active, createTasks } = req.body;
+      const { title, defaultTimeLocal, repeatDaysJson, active, createTasks } = req.body;
       const routineDto: CreateRoutineDto = {
-        userId: userId.trim(),
+        userId: req.user.userId, // Obtener del token
         title: title.trim(),
         defaultTimeLocal,
         repeatDaysJson,
@@ -53,8 +67,13 @@ export class RoutineController {
     }
   }
 
-  public async getById(req: Request, res: Response): Promise<void> {
+  public async getById(req: AuthRequest, res: Response): Promise<void> {
     try {
+      if (!req.user) {
+        res.status(401).json({ message: 'Authentication required' });
+        return;
+      }
+
       const { id } = req.params;
       if (!id) {
         res.status(400).json({ message: 'Routine ID is required' });
@@ -68,6 +87,12 @@ export class RoutineController {
         return;
       }
 
+      // Verificar que la rutina pertenece al usuario autenticado
+      if (routine.userId !== req.user.userId) {
+        res.status(403).json({ message: 'Access denied' });
+        return;
+      }
+
       const routineResponse: RoutineResponseDto = {
         id: routine.id,
         userId: routine.userId,
@@ -76,6 +101,7 @@ export class RoutineController {
         repeatDaysJson: routine.repeatDaysJson,
         active: routine.active,
         createdAt: routine.createdAt,
+        tasks: routine.tasks?.map((task) => this.mapTaskToResponse(task)),
       };
 
       res.status(200).json({ success: true, data: routineResponse });
@@ -84,15 +110,14 @@ export class RoutineController {
     }
   }
 
-  public async getByUserId(req: Request, res: Response): Promise<void> {
+  public async getMyRoutines(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { userId } = req.params;
-      if (!userId) {
-        res.status(400).json({ message: 'User ID is required' });
+      if (!req.user) {
+        res.status(401).json({ message: 'Authentication required' });
         return;
       }
 
-      const routines = await this.getRoutinesByUserIdUseCase.execute(userId);
+      const routines = await this.getRoutinesByUserIdUseCase.execute(req.user.userId);
 
       const routinesResponse: RoutineResponseDto[] = routines.map((routine) => ({
         id: routine.id,
@@ -102,6 +127,7 @@ export class RoutineController {
         repeatDaysJson: routine.repeatDaysJson,
         active: routine.active,
         createdAt: routine.createdAt,
+        tasks: routine.tasks?.map((task) => this.mapTaskToResponse(task)),
       }));
 
       res.status(200).json({ success: true, data: routinesResponse });
@@ -110,11 +136,28 @@ export class RoutineController {
     }
   }
 
-  public async update(req: Request, res: Response): Promise<void> {
+  public async update(req: AuthRequest, res: Response): Promise<void> {
     try {
+      if (!req.user) {
+        res.status(401).json({ message: 'Authentication required' });
+        return;
+      }
+
       const { id } = req.params;
       if (!id) {
         res.status(400).json({ message: 'Routine ID is required' });
+        return;
+      }
+
+      // Verificar que la rutina existe y pertenece al usuario
+      const existingRoutine = await this.getRoutineByIdUseCase.execute(id);
+      if (!existingRoutine) {
+        res.status(404).json({ message: 'Routine not found' });
+        return;
+      }
+
+      if (existingRoutine.userId !== req.user.userId) {
+        res.status(403).json({ message: 'Access denied' });
         return;
       }
 
@@ -151,11 +194,28 @@ export class RoutineController {
     }
   }
 
-  public async delete(req: Request, res: Response): Promise<void> {
+  public async delete(req: AuthRequest, res: Response): Promise<void> {
     try {
+      if (!req.user) {
+        res.status(401).json({ message: 'Authentication required' });
+        return;
+      }
+
       const { id } = req.params;
       if (!id) {
         res.status(400).json({ message: 'Routine ID is required' });
+        return;
+      }
+
+      // Verificar que la rutina existe y pertenece al usuario
+      const existingRoutine = await this.getRoutineByIdUseCase.execute(id);
+      if (!existingRoutine) {
+        res.status(404).json({ message: 'Routine not found' });
+        return;
+      }
+
+      if (existingRoutine.userId !== req.user.userId) {
+        res.status(403).json({ message: 'Access denied' });
         return;
       }
 
@@ -166,12 +226,10 @@ export class RoutineController {
     }
   }
 
-  private validateCreateRoutineRequest(body: CreateRoutineDto): string[] {
+  private validateCreateRoutineRequest(body: CreateRoutineRequestDto): string[] {
     const errors: string[] = [];
 
-    if (!body.userId || typeof body.userId !== 'string' || body.userId.trim().length === 0) {
-      errors.push('User ID is required');
-    }
+    // Ya no validamos userId porque viene del token
 
     if (!body.title || typeof body.title !== 'string' || body.title.trim().length < 2) {
       errors.push('Title is required and must be at least 2 characters');
@@ -232,8 +290,9 @@ export class RoutineController {
       errors.push(`${prefix} title cannot exceed 120 characters`);
     }
 
-    if (!taskObj.dateLocal || typeof taskObj.dateLocal !== 'string' || !this.isValidDate(taskObj.dateLocal)) {
-      errors.push(`${prefix} dateLocal is required and must be in YYYY-MM-DD format`);
+    // dateLocal es opcional ahora - si se proporciona debe ser válido
+    if (taskObj.dateLocal !== undefined && (typeof taskObj.dateLocal !== 'string' || !this.isValidDate(taskObj.dateLocal))) {
+      errors.push(`${prefix} dateLocal must be in YYYY-MM-DD format if provided`);
     }
 
     if (taskObj.timeLocal && (typeof taskObj.timeLocal !== 'string' || !this.isValidTime(taskObj.timeLocal))) {
@@ -246,25 +305,6 @@ export class RoutineController {
 
     if (taskObj.categoryId !== undefined && (typeof taskObj.categoryId !== 'string' || taskObj.categoryId.trim().length === 0)) {
       errors.push(`${prefix} categoryId must be a non-empty string if provided`);
-    }
-
-    if (
-      taskObj.priority !== undefined &&
-      (typeof taskObj.priority !== 'string' || !Object.values(RoutinePriority).includes(taskObj.priority as RoutinePriority))
-    ) {
-      errors.push(`${prefix} priority must be one of: Alta, Media, Baja if provided`);
-    }
-
-    if (taskObj.status && typeof taskObj.status !== 'string') {
-      errors.push(`${prefix} status must be a string if provided`);
-    }
-
-    if (taskObj.startedAtLocal && !(taskObj.startedAtLocal instanceof Date) && typeof taskObj.startedAtLocal !== 'string') {
-      errors.push(`${prefix} startedAtLocal must be a valid date if provided`);
-    }
-
-    if (taskObj.completedAtLocal && !(taskObj.completedAtLocal instanceof Date) && typeof taskObj.completedAtLocal !== 'string') {
-      errors.push(`${prefix} completedAtLocal must be a valid date if provided`);
     }
 
     if (taskObj.description && (typeof taskObj.description !== 'string' || taskObj.description.length > 500)) {
@@ -315,6 +355,38 @@ export class RoutineController {
 
     const parsedDate = new Date(date);
     return parsedDate instanceof Date && !isNaN(parsedDate.getTime());
+  }
+
+  private mapTaskToResponse(task: RoutineTask): RoutineTaskResponseDto {
+    return {
+      id: task.id,
+      routineId: task.routineId,
+      userId: task.userId,
+      title: task.title,
+      dateLocal: task.dateLocal,
+      timeLocal: task.timeLocal,
+      durationMin: task.durationMin,
+      category: task.category
+        ? {
+            id: task.category.id,
+            name: task.category.name,
+            description: task.category.description,
+            color: task.category.color,
+            icon: task.category.icon,
+            active: task.category.active,
+            sortOrder: task.category.sortOrder,
+            createdAt: task.category.createdAt,
+            updatedAt: task.category.updatedAt,
+          }
+        : undefined,
+      priority: task.priority,
+      status: task.status,
+      startedAtLocal: task.startedAtLocal,
+      completedAtLocal: task.completedAtLocal,
+      description: task.description,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    };
   }
 
   private handleError(error: unknown, res: Response): void {

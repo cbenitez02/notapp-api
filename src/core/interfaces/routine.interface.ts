@@ -15,10 +15,19 @@ export interface CreateRoutineDto {
   createTasks?: CreateRoutineTaskForRoutineDto[]; // Tareas opcionales a crear junto con la rutina
 }
 
+// Interfaz para el body del request (sin userId que viene del token)
+export interface CreateRoutineRequestDto {
+  title: string;
+  defaultTimeLocal?: string; // "06:00:00"
+  repeatDaysJson: number[]; // [1,2,3,4,5] => L-V (1=Monday, 7=Sunday)
+  active?: boolean;
+  createTasks?: CreateRoutineTaskForRoutineDto[]; // Tareas opcionales a crear junto con la rutina
+}
+
 // Nueva interfaz para crear tareas junto con la rutina
 export interface CreateRoutineTaskForRoutineDto {
   title: string; // Título/nombre específico de la tarea
-  dateLocal: string; // "2025-08-14"
+  dateLocal?: string; // "2025-08-14" - Si no se especifica, se genera automáticamente basado en repeatDaysJson
   timeLocal?: string; // Si no se especifica, usa defaultTimeLocal de la rutina
   durationMin?: number; // Duración específica para esta tarea
   categoryId?: string; // Categoría específica de la tarea (puede diferir de la rutina)
@@ -44,6 +53,7 @@ export interface RoutineResponseDto {
   repeatDaysJson: number[];
   active: boolean;
   createdAt: Date;
+  tasks?: RoutineTaskResponseDto[];
 }
 
 export interface RoutineTaskResponseDto {

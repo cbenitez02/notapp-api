@@ -1,5 +1,8 @@
 import { DataSource } from 'typeorm';
+import { CategoryEntity } from '../persistence/entities/CategoryEntity';
 import { EmailVerificationTokenEntity } from '../persistence/entities/EmailVerificationTokenEntity';
+import { RoutineEntity } from '../persistence/entities/RoutineEntity';
+import { RoutineTaskEntity } from '../persistence/entities/RoutineTaskEntity';
 import { UserEntity } from '../persistence/entities/UserEntity';
 import { UserSessionEntity } from '../persistence/entities/UserSessionEntity';
 
@@ -12,7 +15,7 @@ export const AppDataSource = new DataSource({
   database: 'dev',
   synchronize: false,
   logging: false,
-  entities: [UserEntity, UserSessionEntity, EmailVerificationTokenEntity],
+  entities: [UserEntity, UserSessionEntity, EmailVerificationTokenEntity, RoutineEntity, RoutineTaskEntity, CategoryEntity],
   migrations: [],
   subscribers: [],
 });

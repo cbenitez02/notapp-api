@@ -21,7 +21,7 @@ export class CategoryController {
         updatedAt: category.updatedAt,
       }));
 
-      res.status(200).json({ success: true, data: categoriesResponse });
+      res.status(200).json(categoriesResponse);
     } catch (error: unknown) {
       this.handleError(error, res);
     }

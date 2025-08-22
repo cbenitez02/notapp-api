@@ -4,12 +4,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { Routine } from '../../entities/Routine';
 import { RoutineTask } from '../../entities/RoutineTask';
 import { CreateRoutineDto, CreateRoutineTaskForRoutineDto, RoutinePriority, RoutineTaskStatus } from '../../interfaces/routine.interface';
-import { ICategoryRepository } from '../../repositories/ICategoryRepository';
 
 export class CreateRoutineUseCase {
   constructor(
     private readonly routineRepository: IRoutineRepository,
-    private readonly categoryRepository: ICategoryRepository,
     private readonly routineTaskRepository: IRoutineTaskRepository,
   ) {}
 
@@ -25,50 +23,61 @@ export class CreateRoutineUseCase {
     // Guardar la rutina en el repositorio
     const savedRoutine = await this.routineRepository.save(newRoutine);
 
-    // Si se especificaron tareas a crear
+    // Si se especificaron tareas a crear, crearlas con fechas generadas automáticamente
     if (createTasks && createTasks.length > 0) {
-      await this.createRoutineTasks(savedRoutine, createTasks);
+      await this.createRoutineTasksWithGeneratedDates(savedRoutine, createTasks);
+    } else {
+      // Si no se especificaron tareas, generar tareas automáticamente para los próximos 30 días
+      await this.generateAutomaticTasks(savedRoutine, 30);
     }
 
     return savedRoutine;
   }
 
-  private async createRoutineTasks(routine: Routine, tasksToCreate: CreateRoutineTaskForRoutineDto[]): Promise<void> {
-    const tasks = tasksToCreate.map(async (taskData) => {
+  private async createRoutineTasksWithGeneratedDates(routine: Routine, tasksToCreate: CreateRoutineTaskForRoutineDto[]): Promise<void> {
+    // Generar fechas disponibles basándose en repeatDaysJson para los próximos 30 días
+    const availableDates = this.generateAvailableDates(routine.repeatDaysJson, 30);
+
+    for (let i = 0; i < tasksToCreate.length; i++) {
+      const taskData = tasksToCreate[i];
+
       // Validar título
       if (!taskData.title || taskData.title.trim().length < 2) {
         throw new Error('Task title is required and must be at least 2 characters');
       }
 
-      // Validar fecha
-      if (!taskData.dateLocal || !this.isValidDate(taskData.dateLocal)) {
-        throw new Error('Invalid date format for task. Use YYYY-MM-DD format');
+      // Si no se especifica dateLocal, usar la siguiente fecha disponible
+      let dateLocal: string;
+      if (taskData.dateLocal) {
+        // Validar que la fecha proporcionada sea válida
+        if (!this.isValidDate(taskData.dateLocal)) {
+          throw new Error(`Invalid date format for task "${taskData.title}". Use YYYY-MM-DD format`);
+        }
+        dateLocal = taskData.dateLocal;
+      } else {
+        // Usar la siguiente fecha disponible basándose en repeatDaysJson
+        if (i >= availableDates.length) {
+          throw new Error(
+            `No more available dates for task "${taskData.title}". Maximum ${availableDates.length} tasks can be created for the configured repeat days.`,
+          );
+        }
+        dateLocal = availableDates[i];
       }
 
       const timeLocal = taskData.timeLocal || routine.defaultTimeLocal;
-      const durationMin = taskData.durationMin; // Usar solo si se especifica explícitamente
       const priority = taskData.priority || RoutinePriority.MEDIA;
       const status = taskData.status || RoutineTaskStatus.PENDING;
 
-      // Validar que la categoría existe si se proporciona
-      let category;
-      if (taskData.categoryId) {
-        category = await this.categoryRepository.findById(taskData.categoryId);
-        if (!category) {
-          throw new Error(`Category not found for task: ${taskData.title}`);
-        }
-      }
-
-      return new RoutineTask(
+      const task = new RoutineTask(
         uuidv4(),
         routine.id,
         routine.userId,
         taskData.title.trim(),
-        taskData.dateLocal,
+        dateLocal,
         timeLocal,
-        durationMin,
+        taskData.durationMin,
         taskData.categoryId,
-        category,
+        undefined, // category - se resolverá en el repositorio si es necesario
         priority,
         status,
         taskData.startedAtLocal,
@@ -77,15 +86,80 @@ export class CreateRoutineUseCase {
         new Date(),
         new Date(),
       );
-    });
 
-    // Resolver todas las promesas de validación de categorías
-    const resolvedTasks = await Promise.all(tasks);
-
-    // Guardar todas las tareas
-    for (const task of resolvedTasks) {
       await this.routineTaskRepository.save(task);
     }
+  }
+
+  private generateAvailableDates(repeatDaysJson: number[], daysToGenerate: number): string[] {
+    const dates: string[] = [];
+    const today = new Date();
+    let daysChecked = 0;
+    let currentDate = new Date(today);
+
+    while (dates.length < daysToGenerate && daysChecked < 365) {
+      // Máximo 1 año
+      const dayOfWeek = currentDate.getDay() === 0 ? 7 : currentDate.getDay();
+
+      if (repeatDaysJson.includes(dayOfWeek)) {
+        dates.push(currentDate.toISOString().split('T')[0]);
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1);
+      daysChecked++;
+    }
+
+    return dates;
+  }
+
+  private async generateAutomaticTasks(routine: Routine, daysToGenerate: number): Promise<void> {
+    const tasks = this.generateTasksForPeriod(routine, daysToGenerate);
+
+    // Guardar todas las tareas
+    for (const task of tasks) {
+      await this.routineTaskRepository.save(task);
+    }
+  }
+
+  private generateTasksForPeriod(routine: Routine, days: number): RoutineTask[] {
+    const tasks: RoutineTask[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < days; i++) {
+      const currentDate = new Date(today);
+      currentDate.setDate(today.getDate() + i);
+
+      // Convertir día de la semana (0=Sunday, 6=Saturday) a formato (1=Monday, 7=Sunday)
+      const dayOfWeek = currentDate.getDay() === 0 ? 7 : currentDate.getDay();
+
+      // Si este día está en repeatDaysJson, crear tarea
+      if (routine.repeatDaysJson.includes(dayOfWeek)) {
+        const dateLocal = currentDate.toISOString().split('T')[0]; // "2025-08-21"
+
+        const task = new RoutineTask(
+          uuidv4(),
+          routine.id,
+          routine.userId,
+          routine.title, // Usar el título de la rutina
+          dateLocal,
+          routine.defaultTimeLocal,
+          undefined, // durationMin - sin valor por defecto
+          undefined, // categoryId - sin categoría por defecto
+          undefined, // category - sin categoría por defecto
+          RoutinePriority.MEDIA, // prioridad por defecto
+          RoutineTaskStatus.PENDING, // estado inicial
+          undefined, // startedAtLocal
+          undefined, // completedAtLocal
+          undefined, // description
+          new Date(), // createdAt
+          new Date(), // updatedAt
+        );
+
+        tasks.push(task);
+      }
+    }
+
+    return tasks;
   }
 
   private validateCreateRoutineDto(dto: CreateRoutineDto): void {

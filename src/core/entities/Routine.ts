@@ -1,3 +1,5 @@
+import { RoutineTask } from './RoutineTask';
+
 export class Routine {
   constructor(
     public id: string,
@@ -7,6 +9,7 @@ export class Routine {
     public repeatDaysJson: number[],
     public active: boolean = true,
     public readonly createdAt: Date = new Date(),
+    public tasks?: RoutineTask[],
   ) {
     this.validateRoutine();
   }
