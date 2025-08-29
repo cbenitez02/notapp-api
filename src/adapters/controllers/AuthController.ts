@@ -147,7 +147,7 @@ export class AuthController {
     }
   }
 
-  private validateLoginRequest(body: any): string[] {
+  private validateLoginRequest(body: Partial<LoginDto>): string[] {
     const errors: string[] = [];
 
     if (!body.email || typeof body.email !== 'string' || !body.email.includes('@')) {
@@ -162,7 +162,7 @@ export class AuthController {
   }
 
   private getClientIp(req: Request): string {
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.connection.remoteAddress || req.socket.remoteAddress || 'Unknown';
+    return (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'Unknown';
   }
 
   private handleError(error: unknown, res: Response): void {

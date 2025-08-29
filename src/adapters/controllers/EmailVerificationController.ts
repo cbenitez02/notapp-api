@@ -102,7 +102,7 @@ export class EmailVerificationController {
     }
   }
 
-  private validateCreateTokenRequest(body: any): string[] {
+  private validateCreateTokenRequest(body: CreateEmailVerificationTokenDto): string[] {
     const errors: string[] = [];
 
     if (!body.userId || typeof body.userId !== 'string' || body.userId.trim().length === 0) {

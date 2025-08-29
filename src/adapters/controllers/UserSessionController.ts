@@ -107,7 +107,7 @@ export class UserSessionController {
     }
   }
 
-  private validateCreateSessionRequest(body: any): string[] {
+  private validateCreateSessionRequest(body: { userId?: string; refreshToken?: string; expiresAt?: string }): string[] {
     const errors: string[] = [];
 
     if (!body.userId || typeof body.userId !== 'string' || body.userId.trim().length === 0) {
@@ -131,7 +131,7 @@ export class UserSessionController {
   }
 
   private getClientIp(req: Request): string {
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.connection.remoteAddress || req.socket.remoteAddress || 'Unknown';
+    return (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket?.remoteAddress || 'Unknown';
   }
 
   private handleError(error: unknown, res: Response): void {

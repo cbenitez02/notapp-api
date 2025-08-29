@@ -55,7 +55,7 @@ export class UserSessionRepositoryImpl implements IUserSessionRepository {
     const sessionEntities = await this.repository.find({
       where: {
         userId,
-        expiresAt: { $gt: new Date() } as any,
+        expiresAt: require('typeorm').MoreThan(new Date()),
       },
     });
     return sessionEntities.map((entity) => this.toDomainEntity(entity));
