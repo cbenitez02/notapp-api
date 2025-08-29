@@ -14,7 +14,14 @@
     "test:integration": "vitest run tests/integration --coverage",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "create-tables": "ts-node scripts/create-tables.ts",
+    "create-new-tables": "ts-node scripts/create-new-tables.ts",
+    "check-categories": "ts-node scripts/check-categories.ts",
+    "fix-categories": "ts-node scripts/fix-categories.ts",
+    "clean-database": "ts-node scripts/clean-database.ts",
+    "check-database": "ts-node scripts/check-database-status.ts",
+    "migrate:template-tasks": "ts-node scripts/migrate-template-tasks.ts"
   },
   "lint-staged": {
     "*.{ts,js}": [

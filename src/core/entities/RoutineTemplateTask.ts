@@ -1,7 +1,7 @@
 import { RoutinePriority } from '../interfaces/routine.interface';
 import { Category } from './Category';
 
-export class RoutineTask {
+export class RoutineTemplateTask {
   constructor(
     public id: string,
     public routineId: string,
@@ -16,12 +16,12 @@ export class RoutineTask {
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
   ) {
-    this.validateTask();
+    this.validateTemplateTask();
   }
 
-  private validateTask(): void {
+  private validateTemplateTask(): void {
     if (!this.id || this.id.trim().length === 0) {
-      throw new Error('RoutineTask ID cannot be empty');
+      throw new Error('RoutineTemplateTask ID cannot be empty');
     }
 
     if (!this.routineId || this.routineId.trim().length === 0) {

@@ -1,12 +1,11 @@
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { RoutinePriority, RoutineTaskStatus } from '../../../core/interfaces/routine.interface';
+import { RoutinePriority } from '../../../core/interfaces/routine.interface';
 import { CategoryEntity } from './CategoryEntity';
 import { RoutineEntity } from './RoutineEntity';
 
-@Entity({ name: 'routine_tasks' })
-@Index(['user_id', 'date_local'])
-@Index(['user_id', 'date_local', 'status'])
-export class RoutineTaskEntity {
+@Entity({ name: 'routine_template_tasks' })
+@Index(['routine_id', 'sort_order'])
+export class RoutineTemplateTaskEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -17,14 +16,8 @@ export class RoutineTaskEntity {
   @Column('char', { length: 36 })
   routine_id!: string;
 
-  @Column('char', { length: 36 })
-  user_id!: string;
-
   @Column({ length: 120 })
-  title!: string; // Título/nombre de la tarea específica
-
-  @Column({ type: 'date' })
-  date_local!: string; // "2025-08-14"
+  title!: string;
 
   @Column({ type: 'time', nullable: true })
   time_local?: string;
@@ -37,22 +30,16 @@ export class RoutineTaskEntity {
   category?: CategoryEntity;
 
   @Column('char', { length: 36, nullable: true })
-  category_id?: string; // Categoría específica de la tarea (puede diferir de la rutina)
+  category_id?: string;
 
   @Column({ type: 'enum', enum: RoutinePriority, default: RoutinePriority.MEDIA })
-  priority!: RoutinePriority; // Prioridad específica de la tarea
-
-  @Column({ type: 'enum', enum: RoutineTaskStatus, default: RoutineTaskStatus.PENDING })
-  status!: RoutineTaskStatus;
-
-  @Column({ type: 'datetime', nullable: true })
-  started_at_local?: Date;
-
-  @Column({ type: 'datetime', nullable: true })
-  completed_at_local?: Date;
+  priority!: RoutinePriority;
 
   @Column({ length: 500, nullable: true })
   description?: string;
+
+  @Column({ type: 'int', default: 0 })
+  sort_order!: number;
 
   @CreateDateColumn()
   created_at!: Date;

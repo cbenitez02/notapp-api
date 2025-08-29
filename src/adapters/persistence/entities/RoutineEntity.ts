@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { RoutineTaskEntity } from './RoutineTaskEntity';
+import { RoutineTemplateTaskEntity } from './RoutineTemplateTaskEntity';
 
 @Entity({ name: 'routines' })
 export class RoutineEntity {
@@ -25,6 +25,6 @@ export class RoutineEntity {
   @CreateDateColumn()
   created_at!: Date;
 
-  @OneToMany(() => RoutineTaskEntity, (t) => t.routine)
-  tasks?: RoutineTaskEntity[];
+  @OneToMany(() => RoutineTemplateTaskEntity, (t) => t.routine)
+  templateTasks?: RoutineTemplateTaskEntity[];
 }

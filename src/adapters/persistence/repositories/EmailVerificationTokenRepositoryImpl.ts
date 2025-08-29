@@ -100,7 +100,7 @@ export class EmailVerificationTokenRepositoryImpl implements IEmailVerificationT
   }
 
   public async deleteExpiredTokens(): Promise<void> {
-    await this.repository.createQueryBuilder().delete().where('expiresAt <= :now', { now: new Date() }).execute();
+    await this.repository.createQueryBuilder().delete().where('expires_at <= :now', { now: new Date() }).execute();
   }
 
   private toDomainEntity(tokenEntity: EmailVerificationTokenEntity): EmailVerificationToken {

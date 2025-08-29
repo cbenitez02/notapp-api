@@ -1,11 +1,11 @@
 import { DataSource, In, Repository } from 'typeorm';
 import { Category } from '../../../core/entities/Category';
-import { RoutineTask } from '../../../core/entities/RoutineTask';
-import { IRoutineTaskRepository } from '../../../core/repositories/IRoutineTaskRepository';
+import { RoutineTemplateTask } from '../../../core/entities/RoutineTemplateTask';
+import { IRoutineTemplateTaskRepository } from '../../../core/repositories/IRoutineTemplateTaskRepository';
 import { CategoryEntity } from '../entities/CategoryEntity';
 import { RoutineTemplateTaskEntity } from '../entities/RoutineTemplateTaskEntity';
 
-export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
+export class RoutineTemplateTaskRepositoryImpl implements IRoutineTemplateTaskRepository {
   private readonly repository: Repository<RoutineTemplateTaskEntity>;
   private readonly categoryRepository: Repository<CategoryEntity>;
 
@@ -14,13 +14,13 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
     this.categoryRepository = dataSource.getRepository(CategoryEntity);
   }
 
-  async create(task: RoutineTask): Promise<RoutineTask> {
+  async create(task: RoutineTemplateTask): Promise<RoutineTemplateTask> {
     const entity = this.toEntity(task);
     const savedEntity = await this.repository.save(entity);
     return this.toDomain(savedEntity);
   }
 
-  async update(task: RoutineTask): Promise<RoutineTask> {
+  async update(task: RoutineTemplateTask): Promise<RoutineTemplateTask> {
     const entity = this.toEntity(task);
     await this.repository.save(entity);
     const updatedEntity = await this.repository.findOne({
@@ -28,7 +28,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
       relations: ['category'],
     });
     if (!updatedEntity) {
-      throw new Error(`RoutineTask with ID ${task.id} not found after update`);
+      throw new Error(`RoutineTemplateTask with ID ${task.id} not found after update`);
     }
     return this.toDomain(updatedEntity);
   }
@@ -36,11 +36,11 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
   async delete(id: string): Promise<void> {
     const result = await this.repository.delete(id);
     if (result.affected === 0) {
-      throw new Error(`RoutineTask with ID ${id} not found`);
+      throw new Error(`RoutineTemplateTask with ID ${id} not found`);
     }
   }
 
-  async findById(id: string): Promise<RoutineTask | null> {
+  async findById(id: string): Promise<RoutineTemplateTask | null> {
     const entity = await this.repository.findOne({
       where: { id },
       relations: ['category'],
@@ -48,7 +48,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
     return entity ? this.toDomain(entity) : null;
   }
 
-  async findByRoutineId(routineId: string): Promise<RoutineTask[]> {
+  async findByRoutineId(routineId: string): Promise<RoutineTemplateTask[]> {
     const entities = await this.repository.find({
       where: { routine_id: routineId },
       relations: ['category'],
@@ -57,7 +57,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
     return entities.map((entity) => this.toDomain(entity));
   }
 
-  async findByRoutineIds(routineIds: string[]): Promise<RoutineTask[]> {
+  async findByRoutineIds(routineIds: string[]): Promise<RoutineTemplateTask[]> {
     if (routineIds.length === 0) {
       return [];
     }
@@ -70,7 +70,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
     return entities.map((entity) => this.toDomain(entity));
   }
 
-  async findAll(): Promise<RoutineTask[]> {
+  async findAll(): Promise<RoutineTemplateTask[]> {
     const entities = await this.repository.find({
       relations: ['category'],
       order: { sort_order: 'ASC' },
@@ -78,7 +78,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
     return entities.map((entity) => this.toDomain(entity));
   }
 
-  private toEntity(domain: RoutineTask): RoutineTemplateTaskEntity {
+  private toEntity(domain: RoutineTemplateTask): RoutineTemplateTaskEntity {
     const entity = new RoutineTemplateTaskEntity();
     entity.id = domain.id;
     entity.routine_id = domain.routineId;
@@ -94,7 +94,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
     return entity;
   }
 
-  private toDomain(entity: RoutineTemplateTaskEntity): RoutineTask {
+  private toDomain(entity: RoutineTemplateTaskEntity): RoutineTemplateTask {
     const category = entity.category
       ? new Category(
           entity.category.id,
@@ -109,7 +109,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
         )
       : undefined;
 
-    return new RoutineTask(
+    return new RoutineTemplateTask(
       entity.id,
       entity.routine_id,
       entity.title,

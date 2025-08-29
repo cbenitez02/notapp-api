@@ -5,7 +5,7 @@ import { RoutineTask } from '../../../core/entities/RoutineTask';
 import { RoutineFilters } from '../../../core/interfaces/routine.interface';
 import { IRoutineRepository } from '../../../core/repositories/IRoutineRepository';
 import { RoutineEntity } from '../entities/RoutineEntity';
-import { RoutineTaskEntity } from '../entities/RoutineTaskEntity';
+import { RoutineTemplateTaskEntity } from '../entities/RoutineTemplateTaskEntity';
 
 export class RoutineRepositoryImpl implements IRoutineRepository {
   constructor(private readonly routineRepository: Repository<RoutineEntity>) {}
@@ -19,7 +19,7 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
   async findById(id: string): Promise<Routine | null> {
     const routineEntity = await this.routineRepository.findOne({
       where: { id },
-      relations: ['tasks', 'tasks.category'],
+      relations: ['templateTasks', 'templateTasks.category'],
     });
 
     return routineEntity ? this.toDomain(routineEntity) : null;
@@ -28,7 +28,7 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
   async findByUserId(userId: string): Promise<Routine[]> {
     const routineEntities = await this.routineRepository.find({
       where: { user_id: userId },
-      relations: ['tasks', 'tasks.category'],
+      relations: ['templateTasks', 'templateTasks.category'],
       order: { created_at: 'DESC' },
     });
 
@@ -38,8 +38,8 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
   async findByFilters(filters: RoutineFilters): Promise<Routine[]> {
     const queryBuilder = this.routineRepository
       .createQueryBuilder('routine')
-      .leftJoinAndSelect('routine.tasks', 'tasks')
-      .leftJoinAndSelect('tasks.category', 'category');
+      .leftJoinAndSelect('routine.templateTasks', 'templateTasks')
+      .leftJoinAndSelect('templateTasks.category', 'templateCategory');
 
     if (filters.userId) {
       queryBuilder.andWhere('routine.user_id = :userId', { userId: filters.userId });
@@ -98,7 +98,7 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
   }
 
   private toDomain(entity: RoutineEntity): Routine {
-    const tasks = entity.tasks?.map((taskEntity) => this.taskToDomain(taskEntity)) || [];
+    const tasks = entity.templateTasks?.map((templateTaskEntity) => this.taskToDomain(templateTaskEntity)) || [];
 
     return new Routine(
       entity.id,
@@ -112,13 +112,11 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
     );
   }
 
-  private taskToDomain(entity: RoutineTaskEntity): RoutineTask {
+  private taskToDomain(entity: RoutineTemplateTaskEntity): RoutineTask {
     return new RoutineTask(
       entity.id,
       entity.routine_id,
-      entity.user_id,
       entity.title,
-      entity.date_local,
       entity.time_local,
       entity.duration_min,
       entity.category_id,
@@ -136,10 +134,8 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
           )
         : undefined,
       entity.priority,
-      entity.status,
-      entity.started_at_local,
-      entity.completed_at_local,
       entity.description,
+      entity.sort_order,
       entity.created_at,
       entity.updated_at,
     );

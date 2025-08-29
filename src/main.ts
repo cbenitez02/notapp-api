@@ -1,17 +1,20 @@
+import dotenv from 'dotenv';
+import 'reflect-metadata';
+
+// Load environment variables first
+dotenv.config();
+
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import express from 'express';
-import 'reflect-metadata';
 import { AppDataSource } from './adapters/database/ormconfig';
 import { router } from './adapters/routes';
 
-dotenv.config({ quiet: true });
 const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+    origin: 'http://localhost:4200',
     credentials: true,
   }),
 );

@@ -1,0 +1,27 @@
+{
+  "title": "ALL DAYS",
+  "repeatDaysJson": [1, 2, 3, 4, 5, 6, 0],
+  "createTasks": [
+    {
+      "title": "Lavarse los dientes",
+      "timeLocal": "07:00:00",
+      "durationMin": 5,
+      "categoryId": "26163d5f-84e5-11f0-a443-10ffe0ef96ed",
+      "priority": "Alta"
+    },
+    {
+      "title": "Lavarse los dientes noche",
+      "timeLocal": "23:30:00",
+      "durationMin": 5,
+      "categoryId": "26163d5f-84e5-11f0-a443-10ffe0ef96ed",
+      "priority": "Alta"
+    },
+    {
+      "title": "Buscar a vicky",
+      "timeLocal": "19:45:00",
+      "durationMin": 30,
+      "categoryId": "26163e0f-84e5-11f0-a443-10ffe0ef96ed",
+      "priority": "Media"
+    }
+  ]
+}

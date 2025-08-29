@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { RoutineTask } from '../../core/entities/RoutineTask';
 import { AuthRequest } from '../../core/interfaces/auth.interface';
+import { ICreateRoutineUseCase } from '../../core/interfaces/ICreateRoutineUseCase';
 import {
   CreateRoutineDto,
   CreateRoutineRequestDto,
@@ -8,7 +9,6 @@ import {
   RoutineTaskResponseDto,
   UpdateRoutineDto,
 } from '../../core/interfaces/routine.interface';
-import { CreateRoutineUseCase } from '../../core/usecases/routines/CreateRoutineUseCase';
 import { DeleteRoutineUseCase } from '../../core/usecases/routines/DeleteRoutineUseCase';
 import { GetRoutineByIdUseCase } from '../../core/usecases/routines/GetRoutineByIdUseCase';
 import { GetRoutinesByUserIdUseCase } from '../../core/usecases/routines/GetRoutinesByUserIdUseCase';
@@ -16,7 +16,7 @@ import { UpdateRoutineUseCase } from '../../core/usecases/routines/UpdateRoutine
 
 export class RoutineController {
   constructor(
-    private readonly createRoutineUseCase: CreateRoutineUseCase,
+    private readonly createRoutineUseCase: ICreateRoutineUseCase,
     private readonly getRoutineByIdUseCase: GetRoutineByIdUseCase,
     private readonly getRoutinesByUserIdUseCase: GetRoutinesByUserIdUseCase,
     private readonly updateRoutineUseCase: UpdateRoutineUseCase,
@@ -39,14 +39,14 @@ export class RoutineController {
         return;
       }
 
-      const { title, defaultTimeLocal, repeatDaysJson, active, createTasks } = req.body;
+      const { title, defaultTimeLocal, repeatDaysJson, active, tasks, templateTasks, createTasks } = req.body;
       const routineDto: CreateRoutineDto = {
         userId: req.user.userId, // Obtener del token
         title: title.trim(),
         defaultTimeLocal,
         repeatDaysJson,
         active,
-        createTasks, // Agregar las tareas opcionales
+        tasks: tasks || templateTasks || createTasks, // Aceptar cualquiera de los tres nombres
       };
 
       const routine = await this.createRoutineUseCase.execute(routineDto);
@@ -130,7 +130,7 @@ export class RoutineController {
         tasks: routine.tasks?.map((task) => this.mapTaskToResponse(task)),
       }));
 
-      res.status(200).json({ success: true, data: routinesResponse });
+      res.status(200).json(routinesResponse);
     } catch (error: unknown) {
       this.handleError(error, res);
     }
@@ -247,8 +247,8 @@ export class RoutineController {
     // repeatDaysJson es requerido
     if (!Array.isArray(body.repeatDaysJson) || body.repeatDaysJson.length === 0) {
       errors.push('Repeat days must be provided as an array');
-    } else if (body.repeatDaysJson.some((day: unknown) => typeof day !== 'number' || day < 1 || day > 7 || !Number.isInteger(day))) {
-      errors.push('Repeat days must be integers between 1 (Monday) and 7 (Sunday)');
+    } else if (body.repeatDaysJson.some((day: unknown) => typeof day !== 'number' || day < 0 || day > 7 || !Number.isInteger(day))) {
+      errors.push('Repeat days must be integers between 0 (Sunday) and 7 (Sunday)');
     }
 
     if (body.active !== undefined && typeof body.active !== 'boolean') {
@@ -256,11 +256,12 @@ export class RoutineController {
     }
 
     // Validar tareas opcionales
-    if (body.createTasks !== undefined) {
-      if (!Array.isArray(body.createTasks)) {
-        errors.push('createTasks must be an array');
+    if (body.templateTasks !== undefined || body.createTasks !== undefined) {
+      const tasks = body.templateTasks || body.createTasks;
+      if (!Array.isArray(tasks)) {
+        errors.push('templateTasks/createTasks must be an array');
       } else {
-        body.createTasks.forEach((task: unknown, index: number) => {
+        tasks.forEach((task: unknown, index: number) => {
           const taskErrors = this.validateCreateTaskForRoutine(task, index);
           errors.push(...taskErrors);
         });
@@ -332,8 +333,8 @@ export class RoutineController {
     if (body.repeatDaysJson !== undefined) {
       if (!Array.isArray(body.repeatDaysJson) || body.repeatDaysJson.length === 0) {
         errors.push('Repeat days must be provided as an array');
-      } else if (body.repeatDaysJson.some((day: unknown) => typeof day !== 'number' || day < 1 || day > 7 || !Number.isInteger(day))) {
-        errors.push('Repeat days must be integers between 1 (Monday) and 7 (Sunday)');
+      } else if (body.repeatDaysJson.some((day: unknown) => typeof day !== 'number' || day < 0 || day > 7 || !Number.isInteger(day))) {
+        errors.push('Repeat days must be integers between 0 (Sunday) and 7 (Sunday)');
       }
     }
 
@@ -361,9 +362,7 @@ export class RoutineController {
     return {
       id: task.id,
       routineId: task.routineId,
-      userId: task.userId,
       title: task.title,
-      dateLocal: task.dateLocal,
       timeLocal: task.timeLocal,
       durationMin: task.durationMin,
       category: task.category
@@ -380,10 +379,8 @@ export class RoutineController {
           }
         : undefined,
       priority: task.priority,
-      status: task.status,
-      startedAtLocal: task.startedAtLocal,
-      completedAtLocal: task.completedAtLocal,
       description: task.description,
+      sortOrder: task.sortOrder,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
     };

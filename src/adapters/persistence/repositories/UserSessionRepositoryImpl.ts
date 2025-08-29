@@ -93,7 +93,7 @@ export class UserSessionRepositoryImpl implements IUserSessionRepository {
   }
 
   public async deleteExpiredSessions(): Promise<void> {
-    await this.repository.createQueryBuilder().delete().where('expiresAt <= :now', { now: new Date() }).execute();
+    await this.repository.createQueryBuilder().delete().where('expires_at <= :now', { now: new Date() }).execute();
   }
 
   private toDomainEntity(sessionEntity: UserSessionEntity): UserSession {

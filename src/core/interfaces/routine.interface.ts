@@ -12,7 +12,7 @@ export interface CreateRoutineDto {
   defaultTimeLocal?: string; // "06:00:00"
   repeatDaysJson: number[]; // [1,2,3,4,5] => L-V (1=Monday, 7=Sunday)
   active?: boolean;
-  createTasks?: CreateRoutineTaskForRoutineDto[]; // Tareas opcionales a crear junto con la rutina
+  tasks?: CreateRoutineTaskDto[]; // Renombrado de templateTasks a tasks
 }
 
 // Interfaz para el body del request (sin userId que viene del token)
@@ -21,21 +21,34 @@ export interface CreateRoutineRequestDto {
   defaultTimeLocal?: string; // "06:00:00"
   repeatDaysJson: number[]; // [1,2,3,4,5] => L-V (1=Monday, 7=Sunday)
   active?: boolean;
-  createTasks?: CreateRoutineTaskForRoutineDto[]; // Tareas opcionales a crear junto con la rutina
+  tasks?: CreateRoutineTaskDto[]; // Renombrado de templateTasks a tasks
+  createTasks?: CreateRoutineTaskDto[]; // Alias para tasks (retrocompatibilidad)
+  templateTasks?: CreateRoutineTaskDto[]; // Alias para tasks (retrocompatibilidad)
 }
 
-// Nueva interfaz para crear tareas junto con la rutina
-export interface CreateRoutineTaskForRoutineDto {
-  title: string; // Título/nombre específico de la tarea
-  dateLocal?: string; // "2025-08-14" - Si no se especifica, se genera automáticamente basado en repeatDaysJson
+// Nueva interfaz para crear tareas de rutina (renombrado de CreateRoutineTemplateTaskDto)
+export interface CreateRoutineTaskDto {
+  title: string;
   timeLocal?: string; // Si no se especifica, usa defaultTimeLocal de la rutina
-  durationMin?: number; // Duración específica para esta tarea
-  categoryId?: string; // Categoría específica de la tarea (puede diferir de la rutina)
-  priority?: RoutinePriority; // Prioridad específica de la tarea (si no se especifica, usa la de la rutina)
+  durationMin?: number;
+  categoryId?: string;
+  priority?: RoutinePriority;
+  description?: string;
+  sortOrder?: number;
+}
+
+// Mantener la interfaz anterior para retrocompatibilidad durante migración
+export interface CreateRoutineTaskForRoutineDto {
+  title: string;
+  dateLocal?: string;
+  timeLocal?: string;
+  durationMin?: number;
+  categoryId?: string;
+  priority?: RoutinePriority;
   status?: RoutineTaskStatus;
-  startedAtLocal?: Date; // Fecha y hora de inicio
-  completedAtLocal?: Date; // Fecha y hora de completado
-  description?: string; // Descripción adicional sobre la tarea
+  startedAtLocal?: Date;
+  completedAtLocal?: Date;
+  description?: string;
 }
 
 export interface UpdateRoutineDto {
@@ -53,23 +66,20 @@ export interface RoutineResponseDto {
   repeatDaysJson: number[];
   active: boolean;
   createdAt: Date;
-  tasks?: RoutineTaskResponseDto[];
+  tasks?: RoutineTaskResponseDto[]; // Renombrado de templateTasks a tasks
 }
 
+// Interfaz para respuesta de tareas de rutina (renombrado de RoutineTemplateTaskResponseDto)
 export interface RoutineTaskResponseDto {
   id: string;
   routineId: string;
-  userId: string;
   title: string;
-  dateLocal: string;
   timeLocal?: string;
   durationMin?: number;
   category?: CategoryResponseDto;
   priority: RoutinePriority;
-  status: RoutineTaskStatus;
-  startedAtLocal?: Date;
-  completedAtLocal?: Date;
   description?: string;
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,45 +97,39 @@ export enum RoutineTaskStatus {
   SKIPPED = 'skipped',
 }
 
-export interface CreateRoutineTaskDto {
-  routineId: string;
+// Interfaces para progreso de tareas
+export interface CreateRoutineTaskProgressDto {
+  routineTemplateTaskId: string;
   userId: string;
   dateLocal: string; // "2025-08-14"
-  timeLocal?: string;
-  durationMin?: number;
+  status?: RoutineTaskStatus;
+  notes?: string;
 }
 
-export interface UpdateRoutineTaskDto {
-  timeLocal?: string;
-  durationMin?: number;
+export interface UpdateRoutineTaskProgressDto {
   status?: RoutineTaskStatus;
   startedAtLocal?: Date;
   completedAtLocal?: Date;
-  description?: string;
+  notes?: string;
 }
 
-export interface RoutineTaskResponseDto {
+export interface RoutineTaskProgressResponseDto {
   id: string;
-  routineId: string;
+  routineTemplateTaskId: string;
   userId: string;
   dateLocal: string;
-  timeLocal?: string;
-  durationMin?: number;
   status: RoutineTaskStatus;
   startedAtLocal?: Date;
   completedAtLocal?: Date;
-  description?: string;
+  notes?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface RoutineTaskFilters {
-  userId?: string;
-  routineId?: string;
-  dateLocal?: string;
-  status?: RoutineTaskStatus;
-  dateFrom?: string; // "2025-08-01"
-  dateTo?: string; // "2025-08-31"
+// Interface combinada para mostrar tareas con progreso
+export interface RoutineTaskWithProgressDto {
+  task: RoutineTaskResponseDto;
+  progress?: RoutineTaskProgressResponseDto;
 }
 
 export interface CreateDailySummaryDto {
@@ -169,4 +173,29 @@ export interface DailySummaryFilters {
   dateTo?: string; // "2025-08-31"
   progressPercentMin?: number;
   progressPercentMax?: number;
+}
+
+export interface RoutineStats {
+  // Estadísticas del día actual
+  dailyStats: {
+    completedTasks: number;
+    totalTasks: number;
+    completionPercentage: number;
+  };
+
+  // Estadísticas semanales
+  weeklyStats: {
+    currentWeekCompletion: number;
+    previousWeekCompletion: number;
+    improvementPercentage: number;
+  };
+
+  // Estadísticas generales
+  generalStats: {
+    activeRoutines: number;
+    totalCompletedTasks: number;
+    tasksInProgress: number;
+    pendingTasks: number;
+    missedTasks: number;
+  };
 }
