@@ -5,6 +5,7 @@ export class RoutineTask {
   constructor(
     public id: string,
     public routineId: string,
+    public routineName: string | undefined,
     public title: string,
     public timeLocal: string | undefined,
     public durationMin: number | undefined,

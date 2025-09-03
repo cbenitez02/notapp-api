@@ -58,6 +58,11 @@ export class UserRepositoryImpl implements IUserRepository {
     await this.repository.delete(userId);
   }
 
+  public async findAll(): Promise<User[]> {
+    const userEntities = await this.repository.find();
+    return userEntities.map((entity) => this.toDomainEntity(entity));
+  }
+
   private toDomainEntity(userEntity: UserEntity): User {
     return new User(
       userEntity.id,

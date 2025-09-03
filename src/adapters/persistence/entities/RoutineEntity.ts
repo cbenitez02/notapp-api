@@ -12,6 +12,8 @@ export class RoutineEntity {
   @Column({ length: 120 })
   title!: string;
 
+  @Column('int')
+  icon!: number;
   @Column({ type: 'time', nullable: true })
   default_time_local?: string; // "06:00:00"
 

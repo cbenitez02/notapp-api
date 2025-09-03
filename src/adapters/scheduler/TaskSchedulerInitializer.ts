@@ -1,6 +1,4 @@
-import { Response } from 'express';
-import { AuthRequest } from '../../core/interfaces/auth.interface';
-import { GetUserRoutineStatsUseCase } from '../../core/usecases/routines/GetRoutineStatsUseCase';
+import { TaskSchedulerService } from '../../core/usecases/routines/TaskSchedulerService';
 import { TaskStatusService } from '../../core/usecases/routines/TaskStatusService';
 import { AppDataSource } from '../database/ormconfig';
 import { DailySummary } from '../persistence/entities/DailySummaryEntity';
@@ -8,56 +6,42 @@ import { RoutineEntity } from '../persistence/entities/RoutineEntity';
 import { UserEntity } from '../persistence/entities/UserEntity';
 import { DailySummaryRepositoryImpl } from '../persistence/repositories/DailySummaryRepositoryImpl';
 import { RoutineRepositoryImpl } from '../persistence/repositories/RoutineRepositoryImpl';
-import { RoutineStatsRepositoryImpl } from '../persistence/repositories/RoutineStatsRepositoryImpl';
 import { RoutineTaskProgressRepositoryImpl } from '../persistence/repositories/RoutineTaskProgressRepositoryImpl';
 import { RoutineTaskRepositoryImpl } from '../persistence/repositories/RoutineTaskRepositoryImpl';
 import { UserRepositoryImpl } from '../persistence/repositories/UserRepositoryImpl';
 
-export class RoutineStatsController {
-  private readonly getUserRoutineStatsUseCase: GetUserRoutineStatsUseCase;
-  private readonly taskStatusService: TaskStatusService;
+let taskSchedulerService: TaskSchedulerService | null = null;
 
-  constructor() {
-    const routineStatsRepository = new RoutineStatsRepositoryImpl();
-    this.getUserRoutineStatsUseCase = new GetUserRoutineStatsUseCase(routineStatsRepository);
-
-    // Inicializar TaskStatusService
+export function initializeTaskScheduler(): TaskSchedulerService {
+  if (!taskSchedulerService) {
+    // Initialize repositories
     const routineRepository = new RoutineRepositoryImpl(AppDataSource.getRepository(RoutineEntity));
     const routineTaskRepository = new RoutineTaskRepositoryImpl(AppDataSource);
     const routineTaskProgressRepository = new RoutineTaskProgressRepositoryImpl(AppDataSource);
     const userRepository = new UserRepositoryImpl(AppDataSource.getRepository(UserEntity));
     const dailySummaryRepository = new DailySummaryRepositoryImpl(AppDataSource.getRepository(DailySummary));
 
-    this.taskStatusService = new TaskStatusService(
+    // Initialize task status service
+    const taskStatusService = new TaskStatusService(
       routineRepository,
       routineTaskRepository,
       routineTaskProgressRepository,
       userRepository,
       dailySummaryRepository,
     );
+
+    // Initialize scheduler service
+    taskSchedulerService = new TaskSchedulerService(taskStatusService);
+
+    // Start scheduled tasks
+    taskSchedulerService.startScheduledTasks();
+
+    console.log('Task scheduler initialized and started');
   }
 
-  async getUserStats(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const userId = req.user?.userId;
+  return taskSchedulerService;
+}
 
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      // Actualizar las tareas del día antes de calcular las estadísticas
-      await this.taskStatusService.updateDailyTaskStatuses(userId);
-
-      const stats = await this.getUserRoutineStatsUseCase.execute(userId);
-
-      res.status(200).json(stats);
-    } catch (error) {
-      console.error('Error getting user routine stats:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Internal server error',
-      });
-    }
-  }
+export function getTaskSchedulerService(): TaskSchedulerService | null {
+  return taskSchedulerService;
 }

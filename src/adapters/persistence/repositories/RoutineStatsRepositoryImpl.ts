@@ -39,63 +39,91 @@ export class RoutineStatsRepositoryImpl implements IRoutineStatsRepository {
 
     const improvementPercentage = previousWeekCompletion > 0 ? ((currentWeekCompletion - previousWeekCompletion) / previousWeekCompletion) * 100 : 0;
 
-    // Estadísticas generales
-    const generalStats = await this.getGeneralUserStats(userId);
+    // Contar rutinas activas
+    const activeRoutines = await this.routineRepository
+      .createQueryBuilder('routine')
+      .where('routine.user_id = :userId', { userId })
+      .andWhere('routine.active = :isActive', { isActive: true })
+      .getCount();
 
     return {
       dailyStats: {
         completedTasks: dailyStats.completed,
         totalTasks: dailyStats.total,
         completionPercentage: dailyStats.total > 0 ? (dailyStats.completed / dailyStats.total) * 100 : 0,
+        pendingTasks: dailyStats.pending,
+        inProgressTasks: dailyStats.inProgress,
+        missedTasks: dailyStats.missed,
+        skippedTasks: dailyStats.skipped,
       },
       weeklyStats: {
         currentWeekCompletion,
         previousWeekCompletion,
         improvementPercentage,
+        activeRoutines,
       },
-      generalStats,
     };
   }
 
-  async getDailyTaskStats(userId: string, date: Date): Promise<{ completed: number; total: number }> {
-    const nextDay = new Date(date);
-    nextDay.setDate(nextDay.getDate() + 1);
+  async getDailyTaskStats(
+    userId: string,
+    date: Date,
+  ): Promise<{
+    completed: number;
+    total: number;
+    pending: number;
+    inProgress: number;
+    missed: number;
+    skipped: number;
+  }> {
+    const dateStr = date.toISOString().split('T')[0];
 
-    // Obtener rutinas activas del usuario
-    const activeRoutines = await this.routineRepository
-      .createQueryBuilder('routine')
+    // Obtener todas las tareas de progreso para el día específico
+    const taskProgresses = await this.taskProgressRepository
+      .createQueryBuilder('progress')
+      .innerJoin('progress.routineTemplateTask', 'task')
+      .innerJoin('task.routine', 'routine')
       .where('routine.user_id = :userId', { userId })
-      .andWhere('routine.active = :isActive', { isActive: true })
+      .andWhere('progress.date_local = :dateStr', { dateStr })
       .getMany();
 
-    let totalTasks = 0;
-    let completedTasks = 0;
+    // Contar tareas por estado
+    let completed = 0;
+    let pending = 0;
+    let inProgress = 0;
+    let missed = 0;
+    let skipped = 0;
 
-    for (const routine of activeRoutines) {
-      // Obtener tareas de la plantilla para esta rutina
-      const templateTasks = await this.templateTaskRepository
-        .createQueryBuilder('task')
-        .where('task.routine_id = :routineId', { routineId: routine.id })
-        .getCount();
+    taskProgresses.forEach((progress) => {
+      switch (progress.status) {
+        case 'completed':
+          completed++;
+          break;
+        case 'pending':
+          pending++;
+          break;
+        case 'in_progress':
+          inProgress++;
+          break;
+        case 'missed':
+          missed++;
+          break;
+        case 'skipped':
+          skipped++;
+          break;
+      }
+    });
 
-      totalTasks += templateTasks;
+    const total = taskProgresses.length;
 
-      // Obtener tareas completadas para el día específico
-      const completedTasksForDay = await this.taskProgressRepository
-        .createQueryBuilder('progress')
-        .innerJoin('progress.routineTemplateTask', 'task')
-        .innerJoin('task.routine', 'routine')
-        .where('routine.user_id = :userId', { userId })
-        .andWhere('routine.id = :routineId', { routineId: routine.id })
-        .andWhere('progress.completed_at_local >= :startDate', { startDate: date })
-        .andWhere('progress.completed_at_local < :endDate', { endDate: nextDay })
-        .andWhere('progress.status = :status', { status: 'completed' })
-        .getCount();
-
-      completedTasks += completedTasksForDay;
-    }
-
-    return { completed: completedTasks, total: totalTasks };
+    return {
+      completed,
+      total,
+      pending,
+      inProgress,
+      missed,
+      skipped,
+    };
   }
 
   async getWeeklyCompletionStats(userId: string, startDate: Date, endDate: Date): Promise<number> {
@@ -127,7 +155,7 @@ export class RoutineStatsRepositoryImpl implements IRoutineStatsRepository {
       .andWhere('routine.active = :isActive', { isActive: true })
       .getCount();
 
-    // Total de tareas completadas
+    // Total de tareas completadas (histórico)
     const totalCompletedTasks = await this.taskProgressRepository
       .createQueryBuilder('progress')
       .innerJoin('progress.routineTemplateTask', 'task')
@@ -136,37 +164,46 @@ export class RoutineStatsRepositoryImpl implements IRoutineStatsRepository {
       .andWhere('progress.status = :status', { status: 'completed' })
       .getCount();
 
-    // Tareas en progreso (iniciadas pero no completadas)
-    const tasksInProgress = await this.taskProgressRepository
-      .createQueryBuilder('progress')
-      .innerJoin('progress.routineTemplateTask', 'task')
-      .innerJoin('task.routine', 'routine')
-      .where('routine.user_id = :userId', { userId })
-      .andWhere('progress.status = :status', { status: 'in_progress' })
-      .getCount();
-
-    // Para tareas pendientes y perdidas, necesitamos lógica más compleja
+    // Para las estadísticas del día actual, necesitamos obtener los datos de hoy
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // Convert to YYYY-MM-DD format
+    const todayStr = today.toISOString().split('T')[0];
 
-    // Tareas perdidas (deberían haberse completado pero no se hicieron)
-    const missedTasks = await this.taskProgressRepository
+    // Obtener todas las tareas de progreso para hoy
+    const todayTaskProgresses = await this.taskProgressRepository
       .createQueryBuilder('progress')
       .innerJoin('progress.routineTemplateTask', 'task')
       .innerJoin('task.routine', 'routine')
       .where('routine.user_id = :userId', { userId })
-      .andWhere('progress.status != :completedStatus', { completedStatus: 'completed' })
+      .andWhere('progress.date_local = :today', { today: todayStr })
+      .getMany();
+
+    // Contar estados para el día actual
+    let tasksInProgress = 0;
+    let pendingTasks = 0;
+    let missedTasks = 0;
+
+    todayTaskProgresses.forEach((progress) => {
+      switch (progress.status) {
+        case 'in_progress':
+          tasksInProgress++;
+          break;
+        case 'pending':
+          pendingTasks++;
+          break;
+        case 'missed':
+          missedTasks++;
+          break;
+      }
+    });
+
+    // También contar tareas perdidas de días anteriores
+    const previousMissedTasks = await this.taskProgressRepository
+      .createQueryBuilder('progress')
+      .innerJoin('progress.routineTemplateTask', 'task')
+      .innerJoin('task.routine', 'routine')
+      .where('routine.user_id = :userId', { userId })
+      .andWhere('progress.status = :missedStatus', { missedStatus: 'missed' })
       .andWhere('progress.date_local < :today', { today: todayStr })
-      .getCount();
-
-    // Tareas pendientes (programadas para hoy o el futuro)
-    const pendingTasks = await this.taskProgressRepository
-      .createQueryBuilder('progress')
-      .innerJoin('progress.routineTemplateTask', 'task')
-      .innerJoin('task.routine', 'routine')
-      .where('routine.user_id = :userId', { userId })
-      .andWhere('progress.status = :pendingStatus', { pendingStatus: 'pending' })
-      .andWhere('progress.date_local >= :today', { today: todayStr })
       .getCount();
 
     return {
@@ -174,7 +211,7 @@ export class RoutineStatsRepositoryImpl implements IRoutineStatsRepository {
       totalCompletedTasks,
       tasksInProgress,
       pendingTasks,
-      missedTasks,
+      missedTasks: missedTasks + previousMissedTasks,
     };
   }
 

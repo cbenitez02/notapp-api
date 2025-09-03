@@ -9,6 +9,7 @@ export enum RoutinePriority {
 export interface CreateRoutineDto {
   userId: string;
   title: string;
+  icon: number;
   defaultTimeLocal?: string; // "06:00:00"
   repeatDaysJson: number[]; // [1,2,3,4,5] => L-V (1=Monday, 7=Sunday)
   active?: boolean;
@@ -18,6 +19,7 @@ export interface CreateRoutineDto {
 // Interfaz para el body del request (sin userId que viene del token)
 export interface CreateRoutineRequestDto {
   title: string;
+  icon: number;
   defaultTimeLocal?: string; // "06:00:00"
   repeatDaysJson: number[]; // [1,2,3,4,5] => L-V (1=Monday, 7=Sunday)
   active?: boolean;
@@ -30,6 +32,17 @@ export interface CreateRoutineRequestDto {
 export interface CreateRoutineTaskDto {
   title: string;
   timeLocal?: string; // Si no se especifica, usa defaultTimeLocal de la rutina
+  durationMin?: number;
+  categoryId?: string;
+  priority?: RoutinePriority;
+  description?: string;
+  sortOrder?: number;
+}
+
+// Interfaz para el request body al crear una tarea en una rutina existente
+export interface CreateTaskInRoutineRequestDto {
+  title: string;
+  timeLocal?: string;
   durationMin?: number;
   categoryId?: string;
   priority?: RoutinePriority;
@@ -53,6 +66,7 @@ export interface CreateRoutineTaskForRoutineDto {
 
 export interface UpdateRoutineDto {
   title?: string;
+  icon?: number;
   defaultTimeLocal?: string;
   repeatDaysJson?: number[];
   active?: boolean;
@@ -62,6 +76,7 @@ export interface RoutineResponseDto {
   id: string;
   userId: string;
   title: string;
+  icon: number;
   defaultTimeLocal?: string;
   repeatDaysJson: number[];
   active: boolean;
@@ -73,6 +88,7 @@ export interface RoutineResponseDto {
 export interface RoutineTaskResponseDto {
   id: string;
   routineId: string;
+  routineName?: string;
   title: string;
   timeLocal?: string;
   durationMin?: number;
@@ -80,6 +96,7 @@ export interface RoutineTaskResponseDto {
   priority: RoutinePriority;
   description?: string;
   sortOrder: number;
+  status?: RoutineTaskStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -95,6 +112,7 @@ export enum RoutineTaskStatus {
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   SKIPPED = 'skipped',
+  MISSED = 'missed',
 }
 
 // Interfaces para progreso de tareas
@@ -130,6 +148,39 @@ export interface RoutineTaskProgressResponseDto {
 export interface RoutineTaskWithProgressDto {
   task: RoutineTaskResponseDto;
   progress?: RoutineTaskProgressResponseDto;
+}
+
+// Interfaz para el servicio de actualización automática de estados
+export interface ITaskStatusService {
+  updateDailyTaskStatuses(userId?: string): Promise<void>;
+  resetDailyTasksForUser(userId: string, dateLocal: string): Promise<void>;
+  updateExpiredTasks(userId?: string): Promise<void>;
+}
+
+// Interfaz para obtener tareas diarias
+export interface GetDailyTasksDto {
+  userId: string;
+  dateLocal: string; // "2025-09-01"
+}
+
+export interface DailyTaskResponseDto {
+  id: string;
+  routineTaskId: string;
+  routineId: string;
+  routineName: string;
+  title: string;
+  timeLocal?: string;
+  durationMin?: number;
+  category?: CategoryResponseDto;
+  priority: RoutinePriority;
+  description?: string;
+  status: RoutineTaskStatus;
+  dateLocal: string;
+  startedAtLocal?: Date;
+  completedAtLocal?: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface CreateDailySummaryDto {
@@ -181,6 +232,10 @@ export interface RoutineStats {
     completedTasks: number;
     totalTasks: number;
     completionPercentage: number;
+    pendingTasks: number;
+    inProgressTasks: number;
+    missedTasks: number;
+    skippedTasks: number;
   };
 
   // Estadísticas semanales
@@ -188,14 +243,6 @@ export interface RoutineStats {
     currentWeekCompletion: number;
     previousWeekCompletion: number;
     improvementPercentage: number;
-  };
-
-  // Estadísticas generales
-  generalStats: {
     activeRoutines: number;
-    totalCompletedTasks: number;
-    tasksInProgress: number;
-    pendingTasks: number;
-    missedTasks: number;
   };
 }

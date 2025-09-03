@@ -67,6 +67,7 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
 
     // Actualizar solo los campos que están definidos
     if (routine.title !== undefined) existingEntity.title = routine.title;
+    if (routine.icon !== undefined) existingEntity.icon = routine.icon;
     if (routine.defaultTimeLocal !== undefined) existingEntity.default_time_local = routine.defaultTimeLocal;
     if (routine.repeatDaysJson !== undefined) existingEntity.repeat_days_json = routine.repeatDaysJson;
     if (routine.active !== undefined) existingEntity.active = routine.active;
@@ -90,6 +91,7 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
     entity.id = routine.id;
     entity.user_id = routine.userId;
     entity.title = routine.title;
+    entity.icon = routine.icon;
     entity.default_time_local = routine.defaultTimeLocal;
     entity.repeat_days_json = routine.repeatDaysJson;
     entity.active = routine.active;
@@ -98,12 +100,13 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
   }
 
   private toDomain(entity: RoutineEntity): Routine {
-    const tasks = entity.templateTasks?.map((templateTaskEntity) => this.taskToDomain(templateTaskEntity)) || [];
+    const tasks = entity.templateTasks?.map((templateTaskEntity) => this.taskToDomain(templateTaskEntity, entity.title)) || [];
 
     return new Routine(
       entity.id,
       entity.user_id,
       entity.title,
+      entity.icon,
       entity.default_time_local,
       entity.repeat_days_json,
       entity.active,
@@ -112,10 +115,11 @@ export class RoutineRepositoryImpl implements IRoutineRepository {
     );
   }
 
-  private taskToDomain(entity: RoutineTemplateTaskEntity): RoutineTask {
+  private taskToDomain(entity: RoutineTemplateTaskEntity, routineName: string): RoutineTask {
     return new RoutineTask(
       entity.id,
       entity.routine_id,
+      routineName,
       entity.title,
       entity.time_local,
       entity.duration_min,

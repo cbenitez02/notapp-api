@@ -1,5 +1,7 @@
 import { DataSource, In, Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { RoutineTaskProgress } from '../../../core/entities/RoutineTaskProgress';
+import { RoutineTaskStatus } from '../../../core/interfaces/routine.interface';
 import { IRoutineTaskProgressRepository } from '../../../core/repositories/IRoutineTaskProgressRepository';
 import { RoutineTaskProgressEntity } from '../entities/RoutineTaskProgressEntity';
 
@@ -101,6 +103,62 @@ export class RoutineTaskProgressRepositoryImpl implements IRoutineTaskProgressRe
       order: { date_local: 'DESC' },
     });
     return entities.map((entity) => this.toDomain(entity));
+  }
+
+  // Nuevos métodos para gestión automática de estados
+  async findByTaskAndDate(taskId: string, dateLocal: string): Promise<RoutineTaskProgress | null> {
+    const entity = await this.repository.findOne({
+      where: {
+        routine_template_task_id: taskId,
+        date_local: dateLocal,
+      },
+    });
+    return entity ? this.toDomain(entity) : null;
+  }
+
+  async findByUserAndDateAndStatuses(userId: string, dateLocal: string, statuses: RoutineTaskStatus[]): Promise<RoutineTaskProgress[]> {
+    const entities = await this.repository.find({
+      where: {
+        user_id: userId,
+        date_local: dateLocal,
+        status: In(statuses),
+      },
+    });
+    return entities.map((entity) => this.toDomain(entity));
+  }
+
+  async updateStatus(id: string, status: RoutineTaskStatus): Promise<void> {
+    const result = await this.repository.update(id, {
+      status: status,
+      updated_at: new Date(),
+    });
+
+    if (result.affected === 0) {
+      throw new Error(`RoutineTaskProgress with ID ${id} not found`);
+    }
+  }
+
+  async createFromDto(dto: {
+    routineTemplateTaskId: string;
+    userId: string;
+    dateLocal: string;
+    status?: RoutineTaskStatus;
+    notes?: string;
+  }): Promise<RoutineTaskProgress> {
+    const progress = new RoutineTaskProgress(
+      uuidv4(),
+      dto.routineTemplateTaskId,
+      dto.userId,
+      dto.dateLocal,
+      dto.status || RoutineTaskStatus.PENDING,
+      undefined,
+      undefined,
+      dto.notes,
+      new Date(),
+      new Date(),
+    );
+
+    return await this.create(progress);
   }
 
   private toEntity(domain: RoutineTaskProgress): RoutineTaskProgressEntity {

@@ -43,7 +43,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
   async findById(id: string): Promise<RoutineTask | null> {
     const entity = await this.repository.findOne({
       where: { id },
-      relations: ['category'],
+      relations: ['category', 'routine'],
     });
     return entity ? this.toDomain(entity) : null;
   }
@@ -51,7 +51,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
   async findByRoutineId(routineId: string): Promise<RoutineTask[]> {
     const entities = await this.repository.find({
       where: { routine_id: routineId },
-      relations: ['category'],
+      relations: ['category', 'routine'],
       order: { sort_order: 'ASC' },
     });
     return entities.map((entity) => this.toDomain(entity));
@@ -64,7 +64,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
 
     const entities = await this.repository.find({
       where: { routine_id: In(routineIds) },
-      relations: ['category'],
+      relations: ['category', 'routine'],
       order: { sort_order: 'ASC' },
     });
     return entities.map((entity) => this.toDomain(entity));
@@ -72,7 +72,7 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
 
   async findAll(): Promise<RoutineTask[]> {
     const entities = await this.repository.find({
-      relations: ['category'],
+      relations: ['category', 'routine'],
       order: { sort_order: 'ASC' },
     });
     return entities.map((entity) => this.toDomain(entity));
@@ -109,9 +109,12 @@ export class RoutineTaskRepositoryImpl implements IRoutineTaskRepository {
         )
       : undefined;
 
+    const routineName = entity.routine?.title;
+
     return new RoutineTask(
       entity.id,
       entity.routine_id,
+      routineName,
       entity.title,
       entity.time_local,
       entity.duration_min,

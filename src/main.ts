@@ -9,6 +9,7 @@ import cors from 'cors';
 import express from 'express';
 import { AppDataSource } from './adapters/database/ormconfig';
 import { router } from './adapters/routes';
+import { initializeTaskScheduler } from './adapters/scheduler/TaskSchedulerInitializer';
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -26,6 +27,9 @@ app.use(cookieParser());
 AppDataSource.initialize()
   .then(() => {
     console.log('Database connected');
+
+    // Initialize task scheduler after database connection
+    initializeTaskScheduler();
 
     app.use(router);
   })

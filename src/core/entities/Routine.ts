@@ -5,6 +5,7 @@ export class Routine {
     public id: string,
     public userId: string,
     public title: string,
+    public icon: number,
     public defaultTimeLocal: string | undefined,
     public repeatDaysJson: number[],
     public active: boolean = true,

@@ -16,10 +16,10 @@ export class CreateRoutineWithTemplatesUseCase implements ICreateRoutineUseCase 
     // Validar DTO
     this.validateCreateRoutineDto(createRoutineDto);
 
-    const { userId, title, defaultTimeLocal, repeatDaysJson, active = true, tasks } = createRoutineDto;
+    const { userId, title, icon, defaultTimeLocal, repeatDaysJson, active = true, tasks } = createRoutineDto;
 
     // Crear nueva rutina
-    const newRoutine = new Routine(uuidv4(), userId, title.trim(), defaultTimeLocal, repeatDaysJson, active, new Date());
+    const newRoutine = new Routine(uuidv4(), userId, title.trim(), icon, defaultTimeLocal, repeatDaysJson, active, new Date());
 
     // Guardar la rutina en el repositorio
     const savedRoutine = await this.routineRepository.save(newRoutine);
@@ -48,6 +48,7 @@ export class CreateRoutineWithTemplatesUseCase implements ICreateRoutineUseCase 
       const task = new RoutineTask(
         uuidv4(),
         routine.id,
+        routine.title,
         taskData.title.trim(),
         timeLocal,
         taskData.durationMin,
