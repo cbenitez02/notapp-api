@@ -10,7 +10,14 @@ export class CreateTaskInRoutineUseCase {
     private readonly routineTaskRepository: IRoutineTaskRepository,
   ) {}
 
+  // Método para crear una sola tarea (mantener retrocompatibilidad)
   async execute(routineId: string, userId: string, taskDto: CreateRoutineTaskDto): Promise<RoutineTask> {
+    const tasks = await this.executeMultiple(routineId, userId, [taskDto]);
+    return tasks[0];
+  }
+
+  // Nuevo método para crear múltiples tareas
+  async executeMultiple(routineId: string, userId: string, taskDtos: CreateRoutineTaskDto[]): Promise<RoutineTask[]> {
     // Verificar que la rutina existe y pertenece al usuario
     const routine = await this.routineRepository.findById(routineId);
     if (!routine) {
@@ -21,33 +28,44 @@ export class CreateTaskInRoutineUseCase {
       throw new Error('Access denied: routine does not belong to user');
     }
 
-    // Obtener el siguiente sortOrder para la nueva tarea
+    // Obtener el siguiente sortOrder para las nuevas tareas
     const existingTasks = await this.routineTaskRepository.findByRoutineId(routineId);
-    const maxSortOrder = existingTasks.length > 0 ? Math.max(...existingTasks.map((t) => t.sortOrder)) : 0;
+    let maxSortOrder = existingTasks.length > 0 ? Math.max(...existingTasks.map((t) => t.sortOrder)) : 0;
 
-    // Generar un nuevo ID para la tarea
-    const newTaskId = uuidv4();
+    const createdTasks: RoutineTask[] = [];
 
-    // Crear la nueva tarea
-    const newTask = new RoutineTask(
-      newTaskId,
-      routineId,
-      routine.title, // routineName
-      taskDto.title,
-      taskDto.timeLocal || routine.defaultTimeLocal,
-      taskDto.durationMin,
-      taskDto.categoryId,
-      undefined, // category - se resolverá en el repository
-      taskDto.priority || RoutinePriority.MEDIA,
-      taskDto.description,
-      taskDto.sortOrder || maxSortOrder + 1,
-      new Date(),
-      new Date(),
-    );
+    // Crear cada tarea
+    for (let i = 0; i < taskDtos.length; i++) {
+      const taskDto = taskDtos[i];
 
-    // Guardar la tarea
-    const createdTask = await this.routineTaskRepository.create(newTask);
+      // Generar un nuevo ID para la tarea
+      const newTaskId = uuidv4();
 
-    return createdTask;
+      // Calcular sortOrder: usar el proporcionado o auto-incrementar
+      const sortOrder = taskDto.sortOrder ?? maxSortOrder + 1 + i;
+
+      // Crear la nueva tarea
+      const newTask = new RoutineTask(
+        newTaskId,
+        routineId,
+        routine.title, // routineName
+        taskDto.title,
+        taskDto.timeLocal || routine.defaultTimeLocal,
+        taskDto.durationMin,
+        taskDto.categoryId,
+        undefined, // category - se resolverá en el repository
+        taskDto.priority || RoutinePriority.MEDIA,
+        taskDto.description,
+        sortOrder,
+        new Date(),
+        new Date(),
+      );
+
+      // Guardar la tarea
+      const createdTask = await this.routineTaskRepository.create(newTask);
+      createdTasks.push(createdTask);
+    }
+
+    return createdTasks;
   }
 }

@@ -6,7 +6,6 @@ import { ICreateRoutineUseCase } from '../../core/interfaces/ICreateRoutineUseCa
 import {
   CreateRoutineDto,
   CreateRoutineRequestDto,
-  CreateRoutineTaskDto,
   CreateTaskInRoutineRequestDto,
   DailyTaskResponseDto,
   RoutineResponseDto,
@@ -358,15 +357,15 @@ export class RoutineController {
         return;
       }
 
-      const taskDto: CreateRoutineTaskDto = req.body;
+      const requestData: CreateTaskInRoutineRequestDto = req.body;
 
-      // Crear la tarea
-      const createdTask = await this.createTaskInRoutineUseCase.execute(routineId, req.user.userId, taskDto);
+      // Crear las tareas
+      const createdTasks = await this.createTaskInRoutineUseCase.executeMultiple(routineId, req.user.userId, requestData.tasks);
 
-      // Mapear la respuesta
-      const taskResponse: RoutineTaskResponseDto = this.mapTaskToResponse(createdTask);
+      // Mapear las respuestas
+      const taskResponses: RoutineTaskResponseDto[] = createdTasks.map((task) => this.mapTaskToResponse(task));
 
-      res.status(201).json({ success: true, data: taskResponse });
+      res.status(201).json(taskResponses);
     } catch (error: unknown) {
       this.handleError(error, res);
     }
@@ -531,32 +530,70 @@ export class RoutineController {
   private validateCreateTaskInRoutineRequest(body: CreateTaskInRoutineRequestDto): string[] {
     const errors: string[] = [];
 
-    if (!body.title || typeof body.title !== 'string' || body.title.trim().length < 2) {
-      errors.push('Title is required and must be at least 2 characters');
+    // Validar que tasks es un array y no está vacío
+    if (!body.tasks || !Array.isArray(body.tasks)) {
+      errors.push('tasks must be provided as an array');
+      return errors;
     }
 
-    if (body.title && body.title.length > 120) {
-      errors.push('Title cannot exceed 120 characters');
+    if (body.tasks.length === 0) {
+      errors.push('At least one task must be provided');
+      return errors;
     }
 
-    if (body.timeLocal && (typeof body.timeLocal !== 'string' || !this.isValidTime(body.timeLocal))) {
-      errors.push('timeLocal must be in HH:MM:SS format if provided');
+    if (body.tasks.length > 50) {
+      errors.push('Cannot create more than 50 tasks at once');
+      return errors;
     }
 
-    if (body.durationMin !== undefined && (typeof body.durationMin !== 'number' || body.durationMin < 1 || body.durationMin > 1440)) {
-      errors.push('durationMin must be a number between 1 and 1440 minutes if provided');
+    // Validar cada tarea individualmente
+    body.tasks.forEach((task, index) => {
+      const taskErrors = this.validateSingleTask(task, index);
+      errors.push(...taskErrors);
+    });
+
+    return errors;
+  }
+
+  private validateSingleTask(task: unknown, index: number): string[] {
+    const errors: string[] = [];
+    const prefix = `Task ${index + 1}:`;
+
+    // Type guard para verificar que task es un objeto
+    if (!task || typeof task !== 'object') {
+      errors.push(`${prefix} must be a valid object`);
+      return errors;
     }
 
-    if (body.categoryId !== undefined && (typeof body.categoryId !== 'string' || body.categoryId.trim().length === 0)) {
-      errors.push('categoryId must be a non-empty string if provided');
+    // Type assertion segura después del type guard
+    const taskObj = task as Record<string, unknown>;
+
+    if (!taskObj.title || typeof taskObj.title !== 'string' || taskObj.title.trim().length < 2) {
+      errors.push(`${prefix} title is required and must be at least 2 characters`);
     }
 
-    if (body.description && (typeof body.description !== 'string' || body.description.length > 500)) {
-      errors.push('description must be a string with maximum 500 characters if provided');
+    if (taskObj.title && typeof taskObj.title === 'string' && taskObj.title.length > 120) {
+      errors.push(`${prefix} title cannot exceed 120 characters`);
     }
 
-    if (body.sortOrder !== undefined && (typeof body.sortOrder !== 'number' || body.sortOrder < 0)) {
-      errors.push('sortOrder must be a non-negative number if provided');
+    if (taskObj.timeLocal && (typeof taskObj.timeLocal !== 'string' || !this.isValidTime(taskObj.timeLocal))) {
+      errors.push(`${prefix} timeLocal must be in HH:MM:SS format if provided`);
+    }
+
+    if (taskObj.durationMin !== undefined && (typeof taskObj.durationMin !== 'number' || taskObj.durationMin < 1 || taskObj.durationMin > 1440)) {
+      errors.push(`${prefix} durationMin must be a number between 1 and 1440 minutes if provided`);
+    }
+
+    if (taskObj.categoryId !== undefined && (typeof taskObj.categoryId !== 'string' || taskObj.categoryId.trim().length === 0)) {
+      errors.push(`${prefix} categoryId must be a non-empty string if provided`);
+    }
+
+    if (taskObj.description && (typeof taskObj.description !== 'string' || taskObj.description.length > 500)) {
+      errors.push(`${prefix} description must be a string with maximum 500 characters if provided`);
+    }
+
+    if (taskObj.sortOrder !== undefined && (typeof taskObj.sortOrder !== 'number' || taskObj.sortOrder < 0)) {
+      errors.push(`${prefix} sortOrder must be a non-negative number if provided`);
     }
 
     return errors;
@@ -723,8 +760,8 @@ export class RoutineController {
         return;
       }
 
-      const { id } = req.params;
-      const { status, notes } = req.body;
+      const { id: taskId } = req.params;
+      const { status } = req.body;
 
       // Validar que el estado sea válido
       if (!Object.values(RoutineTaskStatus).includes(status)) {
@@ -732,13 +769,27 @@ export class RoutineController {
         return;
       }
 
-      // Verificar que la tarea existe y pertenece al usuario
-      const taskProgress = await this.progressRepository.findById(id);
-      if (!taskProgress) {
+      // Verificar que la tarea existe
+      const routineTask = await this.routineTaskRepository.findById(taskId);
+      if (!routineTask) {
         res.status(404).json({ message: 'Task not found' });
         return;
       }
 
+      // Obtener la fecha actual
+      const today = this.getTodayDateLocal();
+
+      // Buscar o crear el progreso de la tarea para hoy
+      let taskProgress = await this.progressRepository.findByTaskAndDate(taskId, today);
+
+      taskProgress ??= await this.progressRepository.createFromDto({
+        routineTemplateTaskId: taskId,
+        userId: req.user.userId,
+        dateLocal: today,
+        status: RoutineTaskStatus.PENDING,
+      });
+
+      // Verificar que el progreso pertenece al usuario
       if (taskProgress.userId !== req.user.userId) {
         res.status(403).json({ message: 'Access denied' });
         return;
@@ -773,10 +824,6 @@ export class RoutineController {
           break;
         default:
           updatedTaskProgress.status = status;
-      }
-
-      if (notes !== undefined) {
-        updatedTaskProgress.updateNotes(notes);
       }
 
       await this.progressRepository.update(updatedTaskProgress);

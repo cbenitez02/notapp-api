@@ -39,8 +39,13 @@ export interface CreateRoutineTaskDto {
   sortOrder?: number;
 }
 
-// Interfaz para el request body al crear una tarea en una rutina existente
+// Interfaz para el request body al crear una o múltiples tareas en una rutina existente
 export interface CreateTaskInRoutineRequestDto {
+  tasks: CreateRoutineTaskDto[]; // Array de tareas a crear
+}
+
+// Interfaz para crear una sola tarea (mantenida para retrocompatibilidad)
+export interface CreateSingleTaskInRoutineRequestDto {
   title: string;
   timeLocal?: string;
   durationMin?: number;
