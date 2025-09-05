@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  api:
+    build: .
+    container_name: miapp-api
+    env_file: .env
+    # Si tenés un proxy inverso delante, podés NO publicar el puerto y usar sólo la red
+    ports:
+      - '3000:3000'
+    restart: unless-stopped
+    networks:
+      - app-net
+    # Si la DB está en otro compose independiente, no uses depends_on (no aplica entre stacks)
+
+networks:
+  app-net:
+    external: true
