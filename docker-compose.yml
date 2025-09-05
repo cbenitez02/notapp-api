@@ -14,8 +14,6 @@ services:
       - '3001:3000' # expone 3001 en el VPS (solo para debug, después se oculta)
     networks:
       - app-net
-    depends_on:
-      - db
 
 networks:
   app-net:
