@@ -3,10 +3,8 @@ import { AuthRequest } from '../../core/interfaces/auth.interface';
 import { GetUserRoutineStatsUseCase } from '../../core/usecases/routines/GetRoutineStatsUseCase';
 import { TaskStatusService } from '../../core/usecases/routines/TaskStatusService';
 import { AppDataSource } from '../database/ormconfig';
-import { DailySummary } from '../persistence/entities/DailySummaryEntity';
 import { RoutineEntity } from '../persistence/entities/RoutineEntity';
 import { UserEntity } from '../persistence/entities/UserEntity';
-import { DailySummaryRepositoryImpl } from '../persistence/repositories/DailySummaryRepositoryImpl';
 import { RoutineRepositoryImpl } from '../persistence/repositories/RoutineRepositoryImpl';
 import { RoutineStatsRepositoryImpl } from '../persistence/repositories/RoutineStatsRepositoryImpl';
 import { RoutineTaskProgressRepositoryImpl } from '../persistence/repositories/RoutineTaskProgressRepositoryImpl';
@@ -26,15 +24,8 @@ export class RoutineStatsController {
     const routineTaskRepository = new RoutineTaskRepositoryImpl(AppDataSource);
     const routineTaskProgressRepository = new RoutineTaskProgressRepositoryImpl(AppDataSource);
     const userRepository = new UserRepositoryImpl(AppDataSource.getRepository(UserEntity));
-    const dailySummaryRepository = new DailySummaryRepositoryImpl(AppDataSource.getRepository(DailySummary));
 
-    this.taskStatusService = new TaskStatusService(
-      routineRepository,
-      routineTaskRepository,
-      routineTaskProgressRepository,
-      userRepository,
-      dailySummaryRepository,
-    );
+    this.taskStatusService = new TaskStatusService(routineRepository, routineTaskRepository, routineTaskProgressRepository, userRepository);
   }
 
   async getUserStats(req: AuthRequest, res: Response): Promise<void> {

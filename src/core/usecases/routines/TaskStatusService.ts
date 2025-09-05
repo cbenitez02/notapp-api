@@ -1,6 +1,5 @@
 import { RoutineTask } from '../../entities/RoutineTask';
 import { ITaskStatusService, RoutineTaskStatus } from '../../interfaces/routine.interface';
-import { IDailySummaryRepository } from '../../repositories/IDailySummaryRepository';
 import { IRoutineRepository } from '../../repositories/IRoutineRepository';
 import { IRoutineTaskProgressRepository } from '../../repositories/IRoutineTaskProgressRepository';
 import { IRoutineTaskRepository } from '../../repositories/IRoutineTaskRepository';
@@ -12,7 +11,6 @@ export class TaskStatusService implements ITaskStatusService {
     private readonly routineTaskRepository: IRoutineTaskRepository,
     private readonly routineTaskProgressRepository: IRoutineTaskProgressRepository,
     private readonly userRepository: IUserRepository,
-    private readonly dailySummaryRepository: IDailySummaryRepository,
   ) {}
 
   /**

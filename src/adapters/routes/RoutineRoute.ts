@@ -10,10 +10,8 @@ import { AuthMiddleware } from '../../middlewares/Auth.middleware';
 import { RoutineController } from '../controllers/RoutineController';
 import { RoutineStatsController } from '../controllers/RoutineStatsController';
 import { AppDataSource } from '../database/ormconfig';
-import { DailySummary } from '../persistence/entities/DailySummaryEntity';
 import { RoutineEntity } from '../persistence/entities/RoutineEntity';
 import { UserEntity } from '../persistence/entities/UserEntity';
-import { DailySummaryRepositoryImpl } from '../persistence/repositories/DailySummaryRepositoryImpl';
 import { RoutineRepositoryImpl } from '../persistence/repositories/RoutineRepositoryImpl';
 import { RoutineTaskProgressRepositoryImpl } from '../persistence/repositories/RoutineTaskProgressRepositoryImpl';
 import { RoutineTaskRepositoryImpl } from '../persistence/repositories/RoutineTaskRepositoryImpl';
@@ -26,16 +24,9 @@ const routineRepository = new RoutineRepositoryImpl(AppDataSource.getRepository(
 const routineTaskRepository = new RoutineTaskRepositoryImpl(AppDataSource);
 const routineTaskProgressRepository = new RoutineTaskProgressRepositoryImpl(AppDataSource);
 const userRepository = new UserRepositoryImpl(AppDataSource.getRepository(UserEntity));
-const dailySummaryRepository = new DailySummaryRepositoryImpl(AppDataSource.getRepository(DailySummary));
 
 // Services
-const taskStatusService = new TaskStatusService(
-  routineRepository,
-  routineTaskRepository,
-  routineTaskProgressRepository,
-  userRepository,
-  dailySummaryRepository,
-);
+const taskStatusService = new TaskStatusService(routineRepository, routineTaskRepository, routineTaskProgressRepository, userRepository);
 
 // Use Cases
 const createRoutineUseCase = new CreateRoutineWithTemplatesUseCase(routineRepository, routineTaskRepository);
