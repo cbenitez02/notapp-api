@@ -35,7 +35,10 @@ export class RoutineTaskProgress {
 
     if (this.startedAtLocal && this.completedAtLocal) {
       if (this.startedAtLocal > this.completedAtLocal) {
-        throw new Error('Start time cannot be after completion time');
+        // Auto-corregir datos inconsistentes: si la fecha de inicio es posterior a la de finalización,
+        // ajustar la fecha de inicio para que sea igual a la de finalización
+        console.warn(`Inconsistent task progress data detected for task ${this.routineTemplateTaskId}. Auto-correcting start time.`);
+        this.startedAtLocal = this.completedAtLocal;
       }
     }
   }
@@ -49,10 +52,7 @@ export class RoutineTaskProgress {
   }
 
   public start(): void {
-    if (this.status === RoutineTaskStatus.COMPLETED) {
-      throw new Error('Cannot start a completed task');
-    }
-
+    // Allow restarting a completed task only if still within time window
     this.status = RoutineTaskStatus.IN_PROGRESS;
     this.startedAtLocal = new Date();
     this.completedAtLocal = undefined;
@@ -71,10 +71,7 @@ export class RoutineTaskProgress {
   }
 
   public skip(): void {
-    if (this.status === RoutineTaskStatus.COMPLETED) {
-      throw new Error('Cannot skip a completed task');
-    }
-
+    // Allow skipping a completed task
     this.status = RoutineTaskStatus.SKIPPED;
     this.startedAtLocal = undefined;
     this.completedAtLocal = undefined;
@@ -88,5 +85,77 @@ export class RoutineTaskProgress {
 
   public updateNotes(notes?: string): void {
     this.notes = notes;
+  }
+
+  /**
+   * Verifica si una tarea puede ser cambiada de estado basándose en su ventana de tiempo
+   * @param taskTimeLocal Hora local de la tarea en formato HH:MM:SS
+   * @param taskDurationMin Duración de la tarea en minutos
+   * @param targetStatus Estado al que se quiere cambiar
+   * @returns true si el cambio es permitido, false si no
+   */
+  public canChangeToStatus(taskTimeLocal?: string, taskDurationMin?: number, targetStatus?: RoutineTaskStatus): boolean {
+    // Si no hay hora definida para la tarea, permitir cualquier cambio
+    if (!taskTimeLocal) {
+      return true;
+    }
+
+    // Si el estado objetivo es COMPLETED, SKIPPED o MISSED, siempre permitir
+    if (targetStatus === RoutineTaskStatus.COMPLETED || targetStatus === RoutineTaskStatus.SKIPPED || targetStatus === RoutineTaskStatus.MISSED) {
+      return true;
+    }
+
+    // Si se quiere cambiar a PENDING o IN_PROGRESS desde COMPLETED, validar ventana de tiempo
+    if (
+      this.status === RoutineTaskStatus.COMPLETED &&
+      (targetStatus === RoutineTaskStatus.PENDING || targetStatus === RoutineTaskStatus.IN_PROGRESS)
+    ) {
+      return this.isWithinTimeWindow(taskTimeLocal, taskDurationMin);
+    }
+
+    return true;
+  }
+
+  /**
+   * Verifica si la tarea está dentro de su ventana de tiempo permitida
+   * @param taskTimeLocal Hora local de la tarea en formato HH:MM:SS
+   * @param taskDurationMin Duración de la tarea en minutos (opcional)
+   * @returns true si está dentro de la ventana, false si no
+   */
+  private isWithinTimeWindow(taskTimeLocal: string, taskDurationMin?: number): boolean {
+    try {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      // Si la fecha de la tarea no es hoy, no permitir cambios
+      if (this.dateLocal !== today) {
+        return false;
+      }
+
+      // Crear fecha/hora de inicio de la tarea
+      const [hours, minutes, seconds = 0] = taskTimeLocal.split(':').map(Number);
+      const taskStartTime = new Date();
+      taskStartTime.setHours(hours, minutes, seconds, 0);
+
+      // Si la tarea es futura (aún no ha llegado su hora), SIEMPRE permitir cambios
+      if (now < taskStartTime) {
+        return true;
+      }
+
+      // Si hay duración definida, calcular hora de fin
+      if (taskDurationMin && taskDurationMin > 0) {
+        const taskEndTime = new Date(taskStartTime.getTime() + taskDurationMin * 60 * 1000);
+
+        // La tarea puede ser modificada si estamos dentro de su ventana de tiempo
+        return now <= taskEndTime;
+      }
+
+      // Si no hay duración definida, permitir cambios solo si la hora de la tarea no ha pasado más de 2 horas
+      const twoHoursAfterStart = new Date(taskStartTime.getTime() + 2 * 60 * 60 * 1000);
+      return now <= twoHoursAfterStart;
+    } catch (error) {
+      console.error('Error validating time window:', error);
+      return false;
+    }
   }
 }

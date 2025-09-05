@@ -809,6 +809,17 @@ export class RoutineController {
         new Date(), // updated_at
       );
 
+      // Validar si el cambio de estado es permitido basándose en la ventana de tiempo
+      const canChange = updatedTaskProgress.canChangeToStatus(routineTask.timeLocal, routineTask.durationMin, status);
+
+      if (!canChange) {
+        res.status(400).json({
+          message: 'Cannot change task status: task is outside its allowed time window',
+          details: 'This task can no longer be changed to pending or in progress because its time window has expired',
+        });
+        return;
+      }
+
       switch (status) {
         case RoutineTaskStatus.IN_PROGRESS:
           updatedTaskProgress.start();
