@@ -1,6 +1,5 @@
 import { DataSource } from 'typeorm';
 import { CategoryEntity } from '../persistence/entities/CategoryEntity';
-import { DailySummary } from '../persistence/entities/DailySummaryEntity';
 import { EmailVerificationTokenEntity } from '../persistence/entities/EmailVerificationTokenEntity';
 import { RoutineEntity } from '../persistence/entities/RoutineEntity';
 import { RoutineTaskProgressEntity } from '../persistence/entities/RoutineTaskProgressEntity';
@@ -25,7 +24,6 @@ export const AppDataSource = new DataSource({
     RoutineTemplateTaskEntity,
     RoutineTaskProgressEntity,
     CategoryEntity,
-    DailySummary,
   ],
   migrations: [],
   subscribers: [],
