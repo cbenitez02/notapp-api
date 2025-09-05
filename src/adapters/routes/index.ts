@@ -11,12 +11,15 @@ const cleanFileName = (fileName: string) => {
 };
 
 readdirSync(PATH_ROUTER)
-  .filter((fileName) => fileName !== 'index.ts')
+  .filter((fileName) => fileName !== 'index.ts' && fileName !== 'index.js')
   .forEach((fileName) => {
     const cleanName = cleanFileName(fileName);
     console.log(cleanName);
 
-    const importName = cleanName ? `./${cleanName.charAt(0).toUpperCase() + cleanName.slice(1)}Route` : '';
+    // Use the exact file name without extension for import
+    const fileNameWithoutExt = fileName.replace(/\.(ts|js)$/, '');
+    const importName = `./${fileNameWithoutExt}`;
+
     import(importName)
       .then((moduleRouter) => {
         router.use(`/${cleanName}`, moduleRouter.router);
