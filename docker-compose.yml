@@ -1,17 +1,21 @@
 version: '3.9'
-
 services:
   api:
     build: .
-    container_name: miapp-api
-    env_file: .env
-    # Si tenés un proxy inverso delante, podés NO publicar el puerto y usar sólo la red
+    container_name: notapp-backend
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: cbenitez # usa el user que creaste en MySQL
+      DB_PASSWORD: Muycapo@123
+      DB_NAME: notapp_prod
     ports:
-      - '3000:3000'
-    restart: unless-stopped
+      - '3001:3000' # expone 3001 en el VPS (solo para debug, después se oculta)
     networks:
       - app-net
-    # Si la DB está en otro compose independiente, no uses depends_on (no aplica entre stacks)
+    depends_on:
+      - db
 
 networks:
   app-net:
