@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { CreateUserUseCase } from '../../core/usecases/users/CreateUserUseCase';
 import { DeleteUserUseCase } from '../../core/usecases/users/DeleteUserUseCase';
 import { GetUserByIdUseCase } from '../../core/usecases/users/GetUserByIdUseCase';
+import { generalRateLimit, registrationRateLimit } from '../../middlewares/RateLimit.middleware';
 import { UserController } from '../controllers/UserController';
 import { AppDataSource } from '../database/ormconfig';
 import { UserEntity } from '../persistence/entities/UserEntity';
@@ -21,8 +22,8 @@ const getUserByIdUseCase = new GetUserByIdUseCase(userRepository);
 const userController = new UserController(createUserUseCase, deleteUserUseCase, getUserByIdUseCase);
 
 // Routes
-router.post('/', (req, res) => userController.create(req, res));
-router.get('/:id', (req, res) => userController.getById(req, res));
-router.delete('/:id', (req, res) => userController.delete(req, res));
+router.post('/', registrationRateLimit, (req, res) => userController.create(req, res));
+router.get('/:id', generalRateLimit, (req, res) => userController.getById(req, res));
+router.delete('/:id', generalRateLimit, (req, res) => userController.delete(req, res));
 
 export { router };

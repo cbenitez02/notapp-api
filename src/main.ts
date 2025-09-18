@@ -14,6 +14,7 @@ import { AppDataSource } from './adapters/database/ormconfig';
 import { router } from './adapters/routes';
 import { initializeTaskScheduler } from './adapters/scheduler/TaskSchedulerInitializer';
 import { errorHandler, handleUncaughtException, handleUnhandledRejection } from './middlewares/ErrorHandler.middleware';
+import { generalRateLimit } from './middlewares/RateLimit.middleware';
 
 // Handle uncaught exceptions and unhandled rejections
 handleUncaughtException();
@@ -52,6 +53,9 @@ if (process.env.NODE_ENV === 'production') {
 app.use(express.json({ limit: '10mb' })); // Add size limit
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+
+// Apply general rate limiting to all routes
+app.use(generalRateLimit);
 
 AppDataSource.initialize()
   .then(() => {

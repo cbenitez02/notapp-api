@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { CreateEmailVerificationTokenUseCase } from '../../core/usecases/email_verification_token/CreateEmailVerificationTokenUseCase';
 import { ResendEmailVerificationUseCase } from '../../core/usecases/email_verification_token/ResendEmailVerificationUseCase';
 import { VerifyEmailTokenUseCase } from '../../core/usecases/email_verification_token/VerifyEmailTokenUseCase';
+import { generalRateLimit, registrationRateLimit } from '../../middlewares/RateLimit.middleware';
 import { EmailVerificationController } from '../controllers/EmailVerificationController';
 import { AppDataSource } from '../database/ormconfig';
 import { EmailVerificationTokenEntity } from '../persistence/entities/EmailVerificationTokenEntity';
@@ -24,8 +25,8 @@ const resendTokenUseCase = new ResendEmailVerificationUseCase(tokenRepository, u
 const emailVerificationController = new EmailVerificationController(createTokenUseCase, verifyTokenUseCase, resendTokenUseCase);
 
 // Routes
-router.post('/create', (req, res) => emailVerificationController.createToken(req, res));
-router.post('/verify', (req, res) => emailVerificationController.verifyEmail(req, res));
-router.post('/resend/:userId', (req, res) => emailVerificationController.resendVerification(req, res));
+router.post('/create', registrationRateLimit, (req, res) => emailVerificationController.createToken(req, res));
+router.post('/verify', generalRateLimit, (req, res) => emailVerificationController.verifyEmail(req, res));
+router.post('/resend/:userId', registrationRateLimit, (req, res) => emailVerificationController.resendVerification(req, res));
 
 export { router };

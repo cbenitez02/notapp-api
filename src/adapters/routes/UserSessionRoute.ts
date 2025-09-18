@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { CreateUserSessionUseCase } from '../../core/usecases/users_session/CreateUserSessionUseCase';
 import { RefreshUserSessionUseCase } from '../../core/usecases/users_session/RefreshUserSessionUseCase';
 import { RevokeUserSessionUseCase } from '../../core/usecases/users_session/RevokeUserSessionUseCase';
+import { authRateLimit, generalRateLimit } from '../../middlewares/RateLimit.middleware';
 import { UserSessionController } from '../controllers/UserSessionController';
 import { AppDataSource } from '../database/ormconfig';
 import { UserEntity } from '../persistence/entities/UserEntity';
@@ -24,9 +25,9 @@ const revokeUserSessionUseCase = new RevokeUserSessionUseCase(userSessionReposit
 const userSessionController = new UserSessionController(createUserSessionUseCase, refreshUserSessionUseCase, revokeUserSessionUseCase);
 
 // Routes
-router.post('/', (req, res) => userSessionController.create(req, res));
-router.put('/refresh', (req, res) => userSessionController.refresh(req, res));
-router.delete('/:sessionId', (req, res) => userSessionController.revoke(req, res));
-router.delete('/user/:userId/all', (req, res) => userSessionController.revokeAllUserSessions(req, res));
+router.post('/', authRateLimit, (req, res) => userSessionController.create(req, res));
+router.put('/refresh', generalRateLimit, (req, res) => userSessionController.refresh(req, res));
+router.delete('/:sessionId', generalRateLimit, (req, res) => userSessionController.revoke(req, res));
+router.delete('/user/:userId/all', generalRateLimit, (req, res) => userSessionController.revokeAllUserSessions(req, res));
 
 export { router };

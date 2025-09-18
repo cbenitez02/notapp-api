@@ -3,6 +3,7 @@ import { LoginUseCase } from '../../core/usecases/auth/LoginUseCase';
 import { LogoutUseCase } from '../../core/usecases/auth/LogoutUseCase';
 import { RefreshTokenUseCase } from '../../core/usecases/auth/RefreshTokenUseCase';
 import { AuthMiddleware } from '../../middlewares/Auth.middleware';
+import { authRateLimit, generalRateLimit } from '../../middlewares/RateLimit.middleware';
 import { AuthController } from '../controllers/AuthController';
 import { AppDataSource } from '../database/ormconfig';
 import { UserEntity } from '../persistence/entities/UserEntity';
@@ -25,9 +26,9 @@ const logoutUseCase = new LogoutUseCase(sessionRepository);
 const authController = new AuthController(loginUseCase, logoutUseCase, refreshTokenUseCase);
 
 // Routes
-router.post('/login', (req, res) => authController.login(req, res));
-router.post('/refresh', (req, res) => authController.refresh(req, res));
-router.post('/logout', (req, res) => authController.logout(req, res));
+router.post('/login', authRateLimit, (req, res) => authController.login(req, res));
+router.post('/refresh', generalRateLimit, (req, res) => authController.refresh(req, res));
+router.post('/logout', generalRateLimit, (req, res) => authController.logout(req, res));
 router.post('/logout-all', AuthMiddleware.authenticate, (req, res) => authController.logoutAllSessions(req, res));
 router.get('/profile', AuthMiddleware.authenticate, (req, res) => authController.profile(req, res));
 
