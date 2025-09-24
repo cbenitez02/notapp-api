@@ -26,7 +26,7 @@ export class UserController {
         fullname: fullname.trim(),
         email: email.toLowerCase().trim(),
         password,
-        role,
+        role: role || 'buyer', // Default role is 'buyer' if not provided
       };
 
       const user = await this.createUserUseCase.execute(userDto);
@@ -108,8 +108,8 @@ export class UserController {
       errors.push('Password is required and must be at least 6 characters');
     }
 
-    if (!body.role || !['buyer', 'seller', 'both', 'admin'].includes(body.role)) {
-      errors.push('Valid role is required (buyer, seller, both, admin)');
+    if (body.role && !['buyer', 'seller', 'both', 'admin'].includes(body.role)) {
+      errors.push('Valid role must be one of: buyer, seller, both, admin');
     }
 
     return errors;

@@ -2,7 +2,7 @@ export interface CreateUserDto {
   fullname: string;
   email: string;
   password: string;
-  role: 'buyer' | 'seller' | 'both' | 'admin';
+  role?: 'buyer' | 'seller' | 'both' | 'admin';
 }
 
 export interface CreateUserSessionDto {

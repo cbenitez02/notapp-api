@@ -9,15 +9,23 @@ import { EmailVerificationTokenEntity } from '../persistence/entities/EmailVerif
 import { UserEntity } from '../persistence/entities/UserEntity';
 import { EmailVerificationTokenRepositoryImpl } from '../persistence/repositories/EmailVerificationTokenRepositoryImpl';
 import { UserRepositoryImpl } from '../persistence/repositories/UserRepositoryImpl';
+import { SendGridEmailService } from '../services/SendGridEmailService';
 
 const router = Router();
+
+// Email Service
+const emailService = new SendGridEmailService({
+  apiKey: process.env.SENDGRID_API_KEY!,
+  fromEmail: process.env.SENDGRID_FROM_EMAIL!,
+  fromName: process.env.SENDGRID_FROM_NAME || 'TickGuard',
+});
 
 // Repositories
 const tokenRepository = new EmailVerificationTokenRepositoryImpl(AppDataSource.getRepository(EmailVerificationTokenEntity));
 const userRepository = new UserRepositoryImpl(AppDataSource.getRepository(UserEntity));
 
 // Use Cases
-const createTokenUseCase = new CreateEmailVerificationTokenUseCase(tokenRepository, userRepository);
+const createTokenUseCase = new CreateEmailVerificationTokenUseCase(tokenRepository, userRepository, emailService);
 const verifyTokenUseCase = new VerifyEmailTokenUseCase(tokenRepository, userRepository);
 const resendTokenUseCase = new ResendEmailVerificationUseCase(tokenRepository, userRepository, createTokenUseCase);
 

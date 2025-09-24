@@ -168,18 +168,42 @@ export class AuthController {
   private handleError(error: unknown, res: Response): void {
     if (error instanceof Error) {
       if (error.message.includes('Invalid email or password')) {
-        res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
+        res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Invalid credentials',
+          errorCode: 'INVALID_CREDENTIALS',
+        });
       } else if (error.message.includes('not found')) {
-        res.status(404).json({ error: 'Not Found', message: error.message });
+        res.status(404).json({
+          error: 'Not Found',
+          message: error.message,
+          errorCode: 'NOT_FOUND',
+        });
       } else if (error.message.includes('verify your email')) {
-        res.status(403).json({ error: 'Email Verification Required', message: error.message });
+        res.status(403).json({
+          error: 'Email Verification Required',
+          message: error.message,
+          errorCode: 'EMAIL_NOT_VERIFIED',
+        });
       } else if (error.message.includes('deactivated')) {
-        res.status(403).json({ error: 'Account Deactivated', message: error.message });
+        res.status(403).json({
+          error: 'Account Deactivated',
+          message: error.message,
+          errorCode: 'ACCOUNT_DEACTIVATED',
+        });
       } else {
-        res.status(400).json({ error: 'Bad Request', message: error.message });
+        res.status(400).json({
+          error: 'Bad Request',
+          message: error.message,
+          errorCode: 'BAD_REQUEST',
+        });
       }
     } else {
-      res.status(500).json({ error: 'Internal Server Error', message: 'An unexpected error occurred' });
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'An unexpected error occurred',
+        errorCode: 'INTERNAL_ERROR',
+      });
     }
   }
 }

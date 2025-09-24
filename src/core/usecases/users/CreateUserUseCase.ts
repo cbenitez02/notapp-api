@@ -12,7 +12,7 @@ export class CreateUserUseCase {
     // Validar DTO
     this.validateCreateUserDto(createUserDto);
 
-    const { fullname, email, password, role } = createUserDto;
+    const { fullname, email, password, role = 'buyer' } = createUserDto;
 
     // Normalize email
     const normalizedEmail = email.toLowerCase().trim();
@@ -45,8 +45,8 @@ export class CreateUserUseCase {
       throw new Error('Valid email is required');
     }
 
-    if (!dto.role || !['buyer', 'seller', 'both', 'admin'].includes(dto.role)) {
-      throw new Error('Valid role is required');
+    if (dto.role && !['buyer', 'seller', 'both', 'admin'].includes(dto.role)) {
+      throw new Error('Valid role must be one of: buyer, seller, both, admin');
     }
   }
 

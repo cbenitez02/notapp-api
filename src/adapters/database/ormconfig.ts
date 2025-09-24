@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { CategoryEntity } from '../persistence/entities/CategoryEntity';
 import { EmailVerificationTokenEntity } from '../persistence/entities/EmailVerificationTokenEntity';
+import { PasswordResetTokenEntity } from '../persistence/entities/PasswordResetTokenEntity';
 import { RoutineEntity } from '../persistence/entities/RoutineEntity';
 import { RoutineTaskProgressEntity } from '../persistence/entities/RoutineTaskProgressEntity';
 import { RoutineTemplateTaskEntity } from '../persistence/entities/RoutineTemplateTaskEntity';
@@ -20,6 +21,7 @@ export const AppDataSource = new DataSource({
     UserEntity,
     UserSessionEntity,
     EmailVerificationTokenEntity,
+    PasswordResetTokenEntity,
     RoutineEntity,
     RoutineTemplateTaskEntity,
     RoutineTaskProgressEntity,

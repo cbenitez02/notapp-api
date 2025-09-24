@@ -3,12 +3,14 @@ import { IUserRepository } from '@core/repositories/IUserRepository';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { EmailVerificationToken } from '../../entities/EmailVerificationToken';
+import { IEmailService } from '../../interfaces/email.interface';
 import { CreateEmailVerificationTokenDto } from '../../interfaces/emailVerificationToken.interface';
 
 export class CreateEmailVerificationTokenUseCase {
   constructor(
     private readonly tokenRepository: IEmailVerificationTokenRepository,
     private readonly userRepository: IUserRepository,
+    private readonly emailService: IEmailService,
   ) {}
 
   async execute(createTokenDto: CreateEmailVerificationTokenDto): Promise<EmailVerificationToken> {
@@ -40,7 +42,18 @@ export class CreateEmailVerificationTokenUseCase {
     // Crear nuevo token
     const newToken = new EmailVerificationToken(uuidv4(), userId, token, new Date(), expiresAt, false);
 
-    return await this.tokenRepository.create(newToken);
+    const savedToken = await this.tokenRepository.create(newToken);
+
+    // Enviar email de verificación
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+
+    await this.emailService.sendVerificationEmail({
+      to: user.email,
+      username: user.fullname,
+      verificationUrl,
+    });
+
+    return savedToken;
   }
 
   private async invalidateExistingTokens(userId: string): Promise<void> {
