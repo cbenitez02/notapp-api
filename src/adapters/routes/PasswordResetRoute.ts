@@ -1,6 +1,8 @@
-import { Router } from 'express';
+import { Request, Response, Router } from 'express';
 import { CreatePasswordResetTokenUseCase } from '../../core/usecases/password_reset/CreatePasswordResetTokenUseCase';
 import { ResetPasswordUseCase } from '../../core/usecases/password_reset/ResetPasswordUseCase';
+import { addEmailSecurityHeaders, blockSuspiciousDomains, checkDailyEmailQuota } from '../../middlewares/EmailQuota.middleware';
+import { logEmailActivity, sanitizeEmailContent, validateEmailInput } from '../../middlewares/EmailSecurity.middleware';
 import { passwordResetRateLimit } from '../../middlewares/RateLimit.middleware';
 import { PasswordResetController } from '../controllers/PasswordResetController';
 import { AppDataSource } from '../database/ormconfig';
@@ -31,7 +33,25 @@ const resetPasswordUseCase = new ResetPasswordUseCase(passwordResetTokenReposito
 const passwordResetController = new PasswordResetController(createTokenUseCase, resetPasswordUseCase);
 
 // Routes
-router.post('/request', passwordResetRateLimit, (req, res) => passwordResetController.requestPasswordReset(req, res));
-router.post('/reset', passwordResetRateLimit, (req, res) => passwordResetController.resetPassword(req, res));
+router.post(
+  '/request',
+  addEmailSecurityHeaders,
+  passwordResetRateLimit,
+  blockSuspiciousDomains,
+  validateEmailInput,
+  sanitizeEmailContent,
+  checkDailyEmailQuota(3), // Límite de 3 solicitudes de reset por día
+  logEmailActivity,
+  (req: Request, res: Response) => passwordResetController.requestPasswordReset(req, res),
+);
+router.post(
+  '/reset',
+  addEmailSecurityHeaders,
+  passwordResetRateLimit,
+  validateEmailInput,
+  sanitizeEmailContent,
+  logEmailActivity,
+  (req: Request, res: Response) => passwordResetController.resetPassword(req, res),
+);
 
 export { router };

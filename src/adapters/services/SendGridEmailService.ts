@@ -1,42 +1,56 @@
 import sgMail from '@sendgrid/mail';
 import { EmailConfig, IEmailService, PasswordResetEmailDto, SendEmailDto, VerificationEmailDto } from '../../core/interfaces/email.interface';
+import { EmailAuditService } from './EmailAuditService';
 
 export class SendGridEmailService implements IEmailService {
   private readonly fromEmail: string;
   private readonly fromName: string;
+  private readonly maxEmailsPerHour: number;
+  private readonly enableDomainValidation: boolean;
 
   constructor(config: EmailConfig) {
     sgMail.setApiKey(config.apiKey);
     this.fromEmail = config.fromEmail;
     this.fromName = config.fromName;
+    this.maxEmailsPerHour = parseInt(process.env.MAX_EMAILS_PER_HOUR || '100');
+    this.enableDomainValidation = process.env.ENABLE_DOMAIN_VALIDATION === 'true';
   }
 
-  async sendVerificationEmail(data: VerificationEmailDto): Promise<void> {
+  async sendVerificationEmail(data: VerificationEmailDto, userId?: string): Promise<void> {
     const html = this.createVerificationEmailTemplate(data.username, data.verificationUrl);
     const text = this.createVerificationEmailText(data.username, data.verificationUrl);
 
-    await this.sendEmail({
-      to: data.to,
-      subject: 'Verifica tu cuenta - NotAapp',
-      html,
-      text,
-    });
+    await this.sendEmail(
+      {
+        to: data.to,
+        subject: 'Verifica tu cuenta - NotAapp',
+        html,
+        text,
+      },
+      userId,
+    );
   }
 
-  async sendPasswordResetEmail(data: PasswordResetEmailDto): Promise<void> {
+  async sendPasswordResetEmail(data: PasswordResetEmailDto, userId?: string): Promise<void> {
     const html = this.createPasswordResetEmailTemplate(data.username, data.resetUrl);
     const text = this.createPasswordResetEmailText(data.username, data.resetUrl);
 
-    await this.sendEmail({
-      to: data.to,
-      subject: 'Restablece tu contraseña - NotApp',
-      html,
-      text,
-    });
+    await this.sendEmail(
+      {
+        to: data.to,
+        subject: 'Restablece tu contraseña - NotApp',
+        html,
+        text,
+      },
+      userId,
+    );
   }
 
-  async sendEmail(data: SendEmailDto): Promise<void> {
+  async sendEmail(data: SendEmailDto, userId?: string): Promise<void> {
     try {
+      // Validaciones de seguridad previas al envío
+      await this.validateEmailSecurity(data, userId);
+
       const msg = {
         to: data.to,
         from: {
@@ -46,12 +60,98 @@ export class SendGridEmailService implements IEmailService {
         subject: data.subject,
         html: data.html,
         text: data.text || this.stripHtml(data.html),
+        headers: {
+          'X-Entity-Ref-ID': userId || 'system',
+          'X-Mailer': 'NotApp-API-v1.0',
+          'X-Priority': '3',
+        },
       };
 
       await sgMail.send(msg);
+
+      // Registrar éxito en auditoría
+      if (userId) {
+        EmailAuditService.incrementDailyCount(userId);
+      }
+
+      EmailAuditService.logEmailActivity({
+        timestamp: new Date().toISOString(),
+        userId: userId || 'system',
+        method: 'SEND_EMAIL',
+        path: '/email/send',
+        to: data.to,
+        subject: data.subject,
+        statusCode: 200,
+        suspicious: false,
+      });
     } catch (error) {
       console.error('Error sending email:', error);
-      throw new Error('Failed to send email');
+
+      // Registrar error en auditoría
+      if (userId) {
+        EmailAuditService.logEmailActivity({
+          timestamp: new Date().toISOString(),
+          userId,
+          method: 'SEND_EMAIL',
+          path: '/email/send',
+          to: data.to,
+          subject: data.subject,
+          statusCode: 500,
+          suspicious: false,
+        });
+      }
+
+      throw new Error(`Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async validateEmailSecurity(data: SendEmailDto, userId?: string): Promise<void> {
+    // Validar dominio si está habilitada la validación
+    if (this.enableDomainValidation) {
+      const allowedDomains = process.env.ALLOWED_EMAIL_DOMAINS?.split(',').map((d) => d.trim().toLowerCase()) || [];
+      if (allowedDomains.length > 0) {
+        const domain = data.to.split('@')[1]?.toLowerCase();
+        if (!domain || !allowedDomains.includes(domain)) {
+          throw new Error(`Email domain not allowed: ${domain}`);
+        }
+      }
+    }
+
+    // Verificar límite diario si hay userId
+    if (userId && EmailAuditService.hasExceededDailyLimit(userId, 50)) {
+      throw new Error('Daily email limit exceeded');
+    }
+
+    // Detectar patrones sospechosos
+    const content = `${data.subject} ${data.html}`;
+    const suspiciousPatterns = [
+      /javascript:/gi,
+      /data:text\/html/gi,
+      /vbscript:/gi,
+      /<script/gi,
+      /urgent.{0,20}action/gi,
+      /verify.{0,20}account.{0,20}immediately/gi,
+    ];
+
+    for (const pattern of suspiciousPatterns) {
+      if (pattern.test(content)) {
+        throw new Error('Email content contains suspicious patterns');
+      }
+    }
+
+    // Validar longitud del email
+    if (data.to.length > 254) {
+      throw new Error('Email address too long');
+    }
+
+    // Validar longitud del asunto
+    if (data.subject.length > 200) {
+      throw new Error('Email subject too long');
+    }
+
+    // Validar longitud del contenido
+    if (data.html.length > 100000) {
+      throw new Error('Email content too long');
     }
   }
 

@@ -1,8 +1,17 @@
-import { Router } from 'express';
+import { Request, Response, Router } from 'express';
 import { CreateEmailVerificationTokenUseCase } from '../../core/usecases/email_verification_token/CreateEmailVerificationTokenUseCase';
 import { ResendEmailVerificationUseCase } from '../../core/usecases/email_verification_token/ResendEmailVerificationUseCase';
 import { VerifyEmailTokenUseCase } from '../../core/usecases/email_verification_token/VerifyEmailTokenUseCase';
-import { generalRateLimit, registrationRateLimit } from '../../middlewares/RateLimit.middleware';
+import { AuthMiddleware } from '../../middlewares/Auth.middleware';
+import { addEmailSecurityHeaders, blockSuspiciousDomains, checkDailyEmailQuota } from '../../middlewares/EmailQuota.middleware';
+import {
+  emailResendRateLimit,
+  emailSendRateLimit,
+  logEmailActivity,
+  sanitizeEmailContent,
+  validateEmailInput,
+} from '../../middlewares/EmailSecurity.middleware';
+import { generalRateLimit } from '../../middlewares/RateLimit.middleware';
 import { EmailVerificationController } from '../controllers/EmailVerificationController';
 import { AppDataSource } from '../database/ormconfig';
 import { EmailVerificationTokenEntity } from '../persistence/entities/EmailVerificationTokenEntity';
@@ -33,8 +42,29 @@ const resendTokenUseCase = new ResendEmailVerificationUseCase(tokenRepository, u
 const emailVerificationController = new EmailVerificationController(createTokenUseCase, verifyTokenUseCase, resendTokenUseCase);
 
 // Routes
-router.post('/create', registrationRateLimit, (req, res) => emailVerificationController.createToken(req, res));
-router.post('/verify', generalRateLimit, (req, res) => emailVerificationController.verifyEmail(req, res));
-router.post('/resend/:userId', registrationRateLimit, (req, res) => emailVerificationController.resendVerification(req, res));
+router.post(
+  '/create',
+  addEmailSecurityHeaders,
+  emailSendRateLimit,
+  blockSuspiciousDomains,
+  validateEmailInput,
+  sanitizeEmailContent,
+  checkDailyEmailQuota(10), // Límite de 10 tokens de verificación por día
+  logEmailActivity,
+  (req: Request, res: Response) => emailVerificationController.createToken(req, res),
+);
+router.post('/verify', generalRateLimit, validateEmailInput, sanitizeEmailContent, logEmailActivity, (req: Request, res: Response) =>
+  emailVerificationController.verifyEmail(req, res),
+);
+router.post(
+  '/resend/:userId',
+  addEmailSecurityHeaders,
+  AuthMiddleware.authenticate,
+  emailResendRateLimit,
+  blockSuspiciousDomains,
+  checkDailyEmailQuota(5), // Límite de 5 reenvíos por día
+  logEmailActivity,
+  (req: Request, res: Response) => emailVerificationController.resendVerification(req, res),
+);
 
 export { router };

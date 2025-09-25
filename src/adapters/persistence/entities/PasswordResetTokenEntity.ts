@@ -22,6 +22,6 @@ export class PasswordResetTokenEntity {
   @Column({ name: 'expires_at', type: 'datetime' })
   expiresAt!: Date;
 
-  @Column({ default: false })
+  @Column({ name: 'is_used', default: false })
   isUsed!: boolean;
 }

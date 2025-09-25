@@ -24,7 +24,7 @@ export interface PasswordResetEmailDto {
 }
 
 export interface IEmailService {
-  sendVerificationEmail(data: VerificationEmailDto): Promise<void>;
-  sendPasswordResetEmail(data: PasswordResetEmailDto): Promise<void>;
-  sendEmail(data: SendEmailDto): Promise<void>;
+  sendVerificationEmail(data: VerificationEmailDto, userId?: string): Promise<void>;
+  sendPasswordResetEmail(data: PasswordResetEmailDto, userId?: string): Promise<void>;
+  sendEmail(data: SendEmailDto, userId?: string): Promise<void>;
 }
