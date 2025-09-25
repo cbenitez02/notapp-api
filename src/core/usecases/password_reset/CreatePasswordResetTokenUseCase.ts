@@ -1,8 +1,8 @@
-import { IPasswordResetTokenRepository } from '../../repositories/IPasswordResetTokenRepository';
-import { IUserRepository } from '../../repositories/IUserRepository';
+import { PasswordResetToken } from '../../entities/PasswordResetToken';
 import { IEmailService } from '../../interfaces/email.interface';
 import { CreatePasswordResetTokenDto } from '../../interfaces/passwordReset.interface';
-import { PasswordResetToken } from '../../entities/PasswordResetToken';
+import { IPasswordResetTokenRepository } from '../../repositories/IPasswordResetTokenRepository';
+import { IUserRepository } from '../../repositories/IUserRepository';
 
 export class CreatePasswordResetTokenUseCase {
   constructor(
@@ -23,13 +23,13 @@ export class CreatePasswordResetTokenUseCase {
 
     // Crear nuevo token
     const token = new PasswordResetToken(user.id, dto.expiresInMinutes || 60);
-    
+
     // Guardar el token
     const savedToken = await this.passwordResetTokenRepository.create(token);
 
     // Enviar email de reset
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${savedToken.token}`;
-    
+
     await this.emailService.sendPasswordResetEmail({
       to: user.email,
       username: user.fullname,

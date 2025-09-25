@@ -3,10 +3,14 @@ import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../../entities/User';
 import { CreateUserDto } from '../../interfaces/user.interface';
+import { CreateEmailVerificationTokenUseCase } from '../email_verification_token/CreateEmailVerificationTokenUseCase';
 export class CreateUserUseCase {
   private readonly SALT_ROUNDS = 12;
 
-  constructor(private readonly userRepository: IUserRepository) {}
+  constructor(
+    private readonly userRepository: IUserRepository,
+    private readonly createEmailVerificationTokenUseCase: CreateEmailVerificationTokenUseCase,
+  ) {}
 
   async execute(createUserDto: CreateUserDto): Promise<User> {
     // Validar DTO
@@ -33,7 +37,21 @@ export class CreateUserUseCase {
     const newUser = new User(uuidv4(), fullname, email, hashedPassword, role, false, true, new Date(), new Date());
 
     //Save the new user to the repository
-    return await this.userRepository.save(newUser);
+    const savedUser = await this.userRepository.save(newUser);
+
+    // Enviar email de verificación automáticamente
+    try {
+      await this.createEmailVerificationTokenUseCase.execute({
+        userId: savedUser.id,
+        expiresInMinutes: 1440, // 24 horas
+      });
+      console.log(`✅ Email de verificación enviado a: ${savedUser.email}`);
+    } catch (emailError) {
+      console.error(`❌ Error enviando email de verificación a ${savedUser.email}:`, emailError);
+      // No lanzamos el error para que la creación del usuario no falle por problemas de email
+    }
+
+    return savedUser;
   }
 
   private validateCreateUserDto(dto: CreateUserDto): void {

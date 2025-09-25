@@ -1,5 +1,5 @@
 import sgMail from '@sendgrid/mail';
-import { EmailConfig, IEmailService, SendEmailDto, VerificationEmailDto, PasswordResetEmailDto } from '../../core/interfaces/email.interface';
+import { EmailConfig, IEmailService, PasswordResetEmailDto, SendEmailDto, VerificationEmailDto } from '../../core/interfaces/email.interface';
 
 export class SendGridEmailService implements IEmailService {
   private readonly fromEmail: string;
@@ -17,7 +17,7 @@ export class SendGridEmailService implements IEmailService {
 
     await this.sendEmail({
       to: data.to,
-      subject: 'Verifica tu cuenta - TickGuard',
+      subject: 'Verifica tu cuenta - NotAapp',
       html,
       text,
     });
@@ -29,7 +29,7 @@ export class SendGridEmailService implements IEmailService {
 
     await this.sendEmail({
       to: data.to,
-      subject: 'Restablece tu contraseña - TickGuard',
+      subject: 'Restablece tu contraseña - NotApp',
       html,
       text,
     });
@@ -75,20 +75,20 @@ export class SendGridEmailService implements IEmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>¡Bienvenido a TickGuard! 🎯</h1>
+            <h1>¡Bienvenido a NotApp! 🎯</h1>
           </div>
           <div class="content">
             <h2>Hola ${username},</h2>
-            <p>Gracias por registrarte en TickGuard. Para completar tu registro, necesitas verificar tu dirección de correo electrónico.</p>
+            <p>Gracias por registrarte en NotApp. Para completar tu registro, necesitas verificar tu dirección de correo electrónico.</p>
             <p>Haz clic en el siguiente botón para verificar tu cuenta:</p>
             <a href="${verificationUrl}" class="button">Verificar mi cuenta</a>
             <p>Si no puedes hacer clic en el botón, copia y pega este enlace en tu navegador:</p>
             <p style="word-break: break-all;">${verificationUrl}</p>
             <p><strong>Este enlace expira en 24 horas.</strong></p>
-            <p>Si no te registraste en TickGuard, puedes ignorar este correo.</p>
+            <p>Si no te registraste en NotApp, puedes ignorar este correo.</p>
           </div>
           <div class="footer">
-            <p>© 2024 TickGuard. Todos los derechos reservados.</p>
+            <p>© 2024 NotApp. Todos los derechos reservados.</p>
           </div>
         </div>
       </body>
@@ -121,7 +121,7 @@ export class SendGridEmailService implements IEmailService {
           </div>
           <div class="content">
             <h2>Hola ${username},</h2>
-            <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en TickGuard.</p>
+            <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en NotApp.</p>
             <p>Haz clic en el siguiente botón para crear una nueva contraseña:</p>
             <a href="${resetUrl}" class="button">Restablecer contraseña</a>
             <p>Si no puedes hacer clic en el botón, copia y pega este enlace en tu navegador:</p>
@@ -136,7 +136,7 @@ export class SendGridEmailService implements IEmailService {
             </div>
           </div>
           <div class="footer">
-            <p>© 2024 TickGuard. Todos los derechos reservados.</p>
+            <p>© 2024 NotApp. Todos los derechos reservados.</p>
           </div>
         </div>
       </body>
@@ -146,30 +146,30 @@ export class SendGridEmailService implements IEmailService {
 
   private createVerificationEmailText(username: string, verificationUrl: string): string {
     return `
-      ¡Bienvenido a TickGuard!
+      ¡Bienvenido a NotApp!
 
       Hola ${username},
 
-      Gracias por registrarte en TickGuard. Para completar tu registro, necesitas verificar tu dirección de correo electrónico.
+      Gracias por registrarte en NotApp. Para completar tu registro, necesitas verificar tu dirección de correo electrónico.
 
       Visita este enlace para verificar tu cuenta:
       ${verificationUrl}
 
       Este enlace expira en 24 horas.
 
-      Si no te registraste en TickGuard, puedes ignorar este correo.
+      Si no te registraste en NotApp, puedes ignorar este correo.
 
-      © 2024 TickGuard. Todos los derechos reservados.
+      © 2024 NotApp. Todos los derechos reservados.
     `;
   }
 
   private createPasswordResetEmailText(username: string, resetUrl: string): string {
     return `
-      Restablece tu contraseña - TickGuard
+      Restablece tu contraseña - NotApp
 
       Hola ${username},
 
-      Recibimos una solicitud para restablecer la contraseña de tu cuenta en TickGuard.
+      Recibimos una solicitud para restablecer la contraseña de tu cuenta en NotApp.
 
       Visita este enlace para crear una nueva contraseña:
       ${resetUrl}
@@ -179,11 +179,14 @@ export class SendGridEmailService implements IEmailService {
       - Solo puedes usar este enlace una vez
       - Si no solicitaste este cambio, ignora este correo
 
-      © 2024 TickGuard. Todos los derechos reservados.
+      © 2024 NotApp. Todos los derechos reservados.
     `;
   }
 
   private stripHtml(html: string): string {
-    return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    return html
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 }
