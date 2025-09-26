@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { CategoryEntity } from '../persistence/entities/CategoryEntity';
 import { EmailVerificationTokenEntity } from '../persistence/entities/EmailVerificationTokenEntity';
+import { GoogleCalendarIntegrationEntity } from '../persistence/entities/GoogleCalendarIntegrationEntity';
 import { PasswordResetTokenEntity } from '../persistence/entities/PasswordResetTokenEntity';
 import { RoutineEntity } from '../persistence/entities/RoutineEntity';
 import { RoutineTaskProgressEntity } from '../persistence/entities/RoutineTaskProgressEntity';
@@ -26,6 +27,7 @@ export const AppDataSource = new DataSource({
     RoutineTemplateTaskEntity,
     RoutineTaskProgressEntity,
     CategoryEntity,
+    GoogleCalendarIntegrationEntity,
   ],
   migrations: [],
   subscribers: [],

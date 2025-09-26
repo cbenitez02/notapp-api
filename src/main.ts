@@ -11,7 +11,7 @@ import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { AppDataSource } from './adapters/database/ormconfig';
-import { router } from './adapters/routes';
+import { initializeRoutes, router } from './adapters/routes';
 import { initializeTaskScheduler } from './adapters/scheduler/TaskSchedulerInitializer';
 import { errorHandler, handleUncaughtException, handleUnhandledRejection } from './middlewares/ErrorHandler.middleware';
 import { generalRateLimit } from './middlewares/RateLimit.middleware';
@@ -57,9 +57,15 @@ app.use(cookieParser());
 // Apply general rate limiting to all routes
 app.use(generalRateLimit);
 
+// Health check endpoint (before database initialization)
+app.get('/health', (_, res) => res.send('NotApp backend is running'));
+
 AppDataSource.initialize()
-  .then(() => {
+  .then(async () => {
     console.log('Database connected');
+
+    // Initialize routes dynamically
+    await initializeRoutes();
 
     // Initialize task scheduler after database connection
     initializeTaskScheduler();
@@ -68,14 +74,13 @@ AppDataSource.initialize()
 
     // Global error handler (must be last middleware)
     app.use(errorHandler);
+
+    // Start server only after everything is initialized
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
   })
   .catch((error) => {
     console.error('Error during Data Source initialization:', error);
     process.exit(1);
   });
-
-app.get('/health', (_, res) => res.send('NotApp backend is running'));
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});

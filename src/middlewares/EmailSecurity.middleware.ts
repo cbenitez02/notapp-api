@@ -13,51 +13,62 @@ const DOMPurifyServer = DOMPurify(window);
 const ALLOWED_EMAIL_DOMAINS = process.env.ALLOWED_EMAIL_DOMAINS?.split(',').map((d) => d.trim().toLowerCase()) || [];
 
 // Rate limiting específico para envío de emails
-export const emailSendRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: process.env.NODE_ENV === 'development' ? 50 : 5, // 5 emails por IP cada 15 minutos en producción
-  message: {
-    error: 'Too Many Email Requests',
-    message: 'Demasiados intentos de envío de email desde esta IP. Intente de nuevo en 15 minutos.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req: Request) => {
-    // Combinar IP y userId para límite más específico
-    const authReq = req as AuthRequest;
-    return authReq.user ? `${req.ip}-${authReq.user.userId}` : req.ip || 'unknown';
-  },
-  handler: (req: Request, res: Response) => {
-    res.status(429).json({
+export const emailSendRateLimit = (req: Request, res: Response, next: NextFunction) => {
+  // Skip rate limiting in development
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
+
+  // Apply rate limiting in production
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 5, // 5 emails por IP cada 15 minutos en producción
+    message: {
       error: 'Too Many Email Requests',
-      message: 'Demasiados intentos de envío de email. Intente de nuevo en 15 minutos.',
-      retryAfter: Math.round(15 * 60),
-    });
-  },
-});
+      message: 'Demasiados intentos de envío de email desde esta IP. Intente de nuevo en 15 minutos.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req: Request, res: Response) => {
+      res.status(429).json({
+        error: 'Too Many Email Requests',
+        message: 'Demasiados intentos de envío de email. Intente de nuevo en 15 minutos.',
+        retryAfter: Math.round(15 * 60),
+      });
+    },
+  });
+
+  return limiter(req, res, next);
+};
 
 // Rate limiting para resend de verificación de email
-export const emailResendRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hora
-  max: process.env.NODE_ENV === 'development' ? 20 : 3, // 3 resends por hora en producción
-  message: {
-    error: 'Too Many Resend Attempts',
-    message: 'Demasiados intentos de reenvío de email. Intente de nuevo en 1 hora.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req: Request) => {
-    const authReq = req as AuthRequest;
-    return authReq.user ? `resend-${req.ip}-${authReq.user.userId}` : `resend-${req.ip || 'unknown'}`;
-  },
-  handler: (req: Request, res: Response) => {
-    res.status(429).json({
+export const emailResendRateLimit = (req: Request, res: Response, next: NextFunction) => {
+  // Skip rate limiting in development
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
+
+  // Apply rate limiting in production
+  const limiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hora
+    max: 3, // 3 resends por hora en producción
+    message: {
       error: 'Too Many Resend Attempts',
       message: 'Demasiados intentos de reenvío de email. Intente de nuevo en 1 hora.',
-      retryAfter: Math.round(60 * 60),
-    });
-  },
-});
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req: Request, res: Response) => {
+      res.status(429).json({
+        error: 'Too Many Resend Attempts',
+        message: 'Demasiados intentos de reenvío de email. Intente de nuevo en 1 hora.',
+        retryAfter: Math.round(60 * 60),
+      });
+    },
+  });
+
+  return limiter(req, res, next);
+};
 
 // Validadores para email
 export const validateEmailInput = [
